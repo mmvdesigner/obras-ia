@@ -35,6 +35,7 @@ export interface Employee {
 }
 
 export type ExpenseCategory = 'material' | 'mao de obra' | 'equipamentos' | 'servicos' | 'outros';
+export type ExpenseStatus = 'pago' | 'a pagar';
 
 export interface Expense {
   id: string;
@@ -44,6 +45,8 @@ export interface Expense {
   category: ExpenseCategory;
   projectId: string;
   receipt: string;
+  supplier: string;
+  status: ExpenseStatus;
 }
 
 export type TaskStatus = 'nao iniciada' | 'em andamento' | 'concluída';

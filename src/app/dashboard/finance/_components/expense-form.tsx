@@ -8,7 +8,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useData } from '@/hooks/use-data';
-import type { Expense, ExpenseCategory } from '@/lib/types';
+import type { Expense, ExpenseCategory, ExpenseStatus } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { Textarea } from '@/components/ui/textarea';
 
@@ -18,6 +18,8 @@ const expenseSchema = z.object({
   date: z.string().min(1, 'Data é obrigatória'),
   category: z.enum(['material', 'mao de obra', 'equipamentos', 'servicos', 'outros']),
   projectId: z.string().min(1, 'Obra é obrigatória'),
+  supplier: z.string().min(1, 'Fornecedor é obrigatório'),
+  status: z.enum(['pago', 'a pagar']),
   receipt: z.string().optional(),
 });
 
@@ -37,6 +39,11 @@ const categoryLabels: Record<ExpenseCategory, string> = {
   outros: 'Outros',
 };
 
+const statusLabels: Record<ExpenseStatus, string> = {
+  pago: 'Pago',
+  'a pagar': 'A Pagar',
+};
+
 export function ExpenseForm({ expense, onFinished, projectId }: ExpenseFormProps) {
   const { data, addExpense, updateExpense } = useData();
   const { toast } = useToast();
@@ -46,6 +53,7 @@ export function ExpenseForm({ expense, onFinished, projectId }: ExpenseFormProps
     : {
         date: new Date().toISOString().split('T')[0],
         category: 'material',
+        status: 'pago',
         projectId,
       };
 
@@ -67,59 +75,61 @@ export function ExpenseForm({ expense, onFinished, projectId }: ExpenseFormProps
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-        <FormField
+      <form onSubmit={form.handleSubmit(onSubmit)} className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="md:col-span-2">
+            <FormField
+                control={form.control}
+                name="projectId"
+                render={({ field }) => (
+                <FormItem>
+                    <FormLabel>Obra Vinculada</FormLabel>
+                    <Input disabled value={data.projects.find(p => p.id === projectId)?.name} />
+                    <FormMessage />
+                </FormItem>
+                )}
+            />
+        </div>
+        <div className="md:col-span-2">
+            <FormField
             control={form.control}
-            name="projectId"
+            name="description"
             render={({ field }) => (
-              <FormItem>
-                <FormLabel>Obra Vinculada</FormLabel>
-                 <Input disabled value={data.projects.find(p => p.id === projectId)?.name} />
+                <FormItem>
+                <FormLabel>Descrição</FormLabel>
+                <FormControl>
+                    <Input placeholder="Compra de cimento" {...field} />
+                </FormControl>
                 <FormMessage />
-              </FormItem>
+                </FormItem>
             )}
-          />
+            />
+        </div>
         <FormField
-          control={form.control}
-          name="description"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Descrição</FormLabel>
-              <FormControl>
-                <Input placeholder="Compra de cimento" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-          <FormField
             control={form.control}
             name="amount"
             render={({ field }) => (
-              <FormItem>
+            <FormItem>
                 <FormLabel>Valor (R$)</FormLabel>
                 <FormControl>
-                  <Input type="number" placeholder="1500.00" {...field} />
+                <Input type="number" placeholder="1500.00" {...field} />
                 </FormControl>
                 <FormMessage />
-              </FormItem>
+            </FormItem>
             )}
-          />
-          <FormField
+        />
+        <FormField
             control={form.control}
             name="date"
             render={({ field }) => (
-              <FormItem>
+            <FormItem>
                 <FormLabel>Data da Despesa</FormLabel>
                 <FormControl>
-                  <Input type="date" {...field} />
+                <Input type="date" {...field} />
                 </FormControl>
                 <FormMessage />
-              </FormItem>
+            </FormItem>
             )}
-          />
-        </div>
+        />
         
         <FormField
           control={form.control}
@@ -145,22 +155,66 @@ export function ExpenseForm({ expense, onFinished, projectId }: ExpenseFormProps
             </FormItem>
           )}
         />
-        
         <FormField
           control={form.control}
-          name="receipt"
+          name="supplier"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Comprovante (Descrição/Link)</FormLabel>
+              <FormLabel>Fornecedor</FormLabel>
               <FormControl>
-                <Textarea placeholder="Nota fiscal N-12345 ou link para o arquivo" {...field} />
+                <Input placeholder="Casa do Construtor" {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
           )}
         />
 
-        <Button type="submit">{expense ? 'Salvar Alterações' : 'Registrar Gasto'}</Button>
+        <div className="md:col-span-2">
+            <FormField
+            control={form.control}
+            name="status"
+            render={({ field }) => (
+                <FormItem>
+                <FormLabel>Status do Pagamento</FormLabel>
+                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <FormControl>
+                    <SelectTrigger>
+                        <SelectValue placeholder="Selecione o status" />
+                    </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                    {Object.entries(statusLabels).map(([value, label]) => (
+                        <SelectItem key={value} value={value}>
+                        {label}
+                        </SelectItem>
+                    ))}
+                    </SelectContent>
+                </Select>
+                <FormMessage />
+                </FormItem>
+            )}
+            />
+        </div>
+        
+        <div className="md:col-span-2">
+            <FormField
+            control={form.control}
+            name="receipt"
+            render={({ field }) => (
+                <FormItem>
+                <FormLabel>Comprovante (Descrição/Link)</FormLabel>
+                <FormControl>
+                    <Textarea placeholder="Nota fiscal N-12345 ou link para o arquivo" {...field} />
+                </FormControl>
+                <FormMessage />
+                </FormItem>
+            )}
+            />
+        </div>
+
+        <div className="md:col-span-2">
+            <Button type="submit">{expense ? 'Salvar Alterações' : 'Registrar Gasto'}</Button>
+        </div>
       </form>
     </Form>
   );

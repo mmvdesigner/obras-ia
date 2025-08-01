@@ -84,6 +84,8 @@ export const initialData: AppData = {
       category: 'material',
       projectId: 'proj-1',
       receipt: 'nota-fiscal-123.pdf',
+      supplier: 'Casa do Construtor',
+      status: 'pago'
     },
     {
       id: 'exp-2',
@@ -93,6 +95,8 @@ export const initialData: AppData = {
       category: 'mao de obra',
       projectId: 'proj-1',
       receipt: 'recibo-pagamento-jun.pdf',
+      supplier: 'Empreiteira Mão na Massa',
+      status: 'pago'
     },
     {
         id: 'exp-3',
@@ -102,6 +106,8 @@ export const initialData: AppData = {
         category: 'equipamentos',
         projectId: 'proj-1',
         receipt: 'recibo-locacao.pdf',
+        supplier: 'AlugaTudo Máquinas',
+        status: 'a pagar'
     }
   ],
   tasks: [
