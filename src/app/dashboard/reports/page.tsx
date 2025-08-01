@@ -2,13 +2,16 @@
 
 import { useState, useMemo, useRef } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import { Bot, Loader2, Printer } from 'lucide-react';
+import { Bot, Loader2, Printer, AlertCircle } from 'lucide-react';
 import { DataProvider, useData } from '@/hooks/use-data';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { summarizeProjectExpenses, SummarizeProjectExpensesInput } from '@/ai/flows/summarize-project-expenses';
 import { useReactToPrint } from 'react-to-print';
+import { Badge } from '@/components/ui/badge';
+import { Separator } from '@/components/ui/separator';
 
 function ReportsPage() {
   const { data } = useData();
@@ -20,6 +23,7 @@ function ReportsPage() {
   const project = useMemo(() => data.projects.find(p => p.id === selectedProjectId), [data, selectedProjectId]);
   const expenses = useMemo(() => data.expenses.filter(e => e.projectId === selectedProjectId), [data, selectedProjectId]);
   const tasks = useMemo(() => data.tasks.filter(t => t.projectId === selectedProjectId), [data, selectedProjectId]);
+  const pendingExpenses = useMemo(() => expenses.filter(e => e.status === 'a pagar'), [expenses]);
   
   const handlePrint = useReactToPrint({
     content: () => reportRef.current,
@@ -73,6 +77,10 @@ function ReportsPage() {
   const chartData = Object.entries(expensesByCategory).map(([name, value]) => ({ name, 'Valor (R$)': value }));
 
   const formatCurrency = (value: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
+  const formatDate = (dateString: string) => new Date(dateString).toLocaleDateString('pt-BR', { timeZone: 'UTC' });
+  const totalSpent = useMemo(() => expenses.reduce((sum, e) => sum + e.amount, 0), [expenses]);
+  const totalPending = useMemo(() => pendingExpenses.reduce((sum, e) => sum + e.amount, 0), [pendingExpenses]);
+  const tasksCompleted = useMemo(() => tasks.filter(t => t.status === 'concluída').length, [tasks]);
 
   return (
     <div className="space-y-6">
@@ -102,27 +110,88 @@ function ReportsPage() {
       </div>
       
       {project ? (
-        <div ref={reportRef} className="space-y-6 p-4 @media print:p-0">
+        <div ref={reportRef} className="space-y-6 p-4 print:p-0">
           <Card>
             <CardHeader>
-              <CardTitle>{project.name}</CardTitle>
-              <CardDescription>Resumo financeiro e de progresso</CardDescription>
+              <CardTitle>Relatório Geral: {project.name}</CardTitle>
+              <CardDescription>Emitido em: {new Date().toLocaleDateString('pt-BR')}</CardDescription>
             </CardHeader>
-            <CardContent className="grid md:grid-cols-3 gap-4">
-              <div>
-                  <h3 className="font-semibold">Orçamento Total</h3>
-                  <p>{formatCurrency(project.totalBudget)}</p>
-              </div>
-              <div>
-                  <h3 className="font-semibold">Total Gasto</h3>
-                  <p>{formatCurrency(expenses.reduce((sum, e) => sum + e.amount, 0))}</p>
-              </div>
-              <div>
-                  <h3 className="font-semibold">Progresso das Tarefas</h3>
-                  <p>{tasks.filter(t => t.status === 'concluída').length} de {tasks.length} tarefas concluídas</p>
-              </div>
-            </CardContent>
+             <CardContent>
+                <Table>
+                    <TableBody>
+                        <TableRow>
+                            <TableCell className="font-medium">Cliente</TableCell>
+                            <TableCell>{project.client}</TableCell>
+                            <TableCell className="font-medium">Status</TableCell>
+                            <TableCell><Badge>{project.status}</Badge></TableCell>
+                        </TableRow>
+                        <TableRow>
+                            <TableCell className="font-medium">Endereço</TableCell>
+                            <TableCell colSpan={3}>{project.address}</TableCell>
+                        </TableRow>
+                         <TableRow>
+                            <TableCell className="font-medium">Data de Início</TableCell>
+                            <TableCell>{formatDate(project.startDate)}</TableCell>
+                             <TableCell className="font-medium">Data de Término</TableCell>
+                            <TableCell>{formatDate(project.endDate)}</TableCell>
+                        </TableRow>
+                    </TableBody>
+                </Table>
+             </CardContent>
           </Card>
+          
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <Card>
+                <CardHeader>
+                    <CardTitle>Resumo Financeiro</CardTitle>
+                </CardHeader>
+                <CardContent>
+                    <Table>
+                        <TableBody>
+                            <TableRow>
+                                <TableCell>Orçamento Total</TableCell>
+                                <TableCell className="text-right font-bold">{formatCurrency(project.totalBudget)}</TableCell>
+                            </TableRow>
+                            <TableRow>
+                                <TableCell>Total Gasto (Pago)</TableCell>
+                                <TableCell className="text-right font-bold">{formatCurrency(totalSpent - totalPending)}</TableCell>
+                            </TableRow>
+                            <TableRow>
+                                <TableCell className="text-destructive">Total a Pagar</TableCell>
+                                <TableCell className="text-right font-bold text-destructive">{formatCurrency(totalPending)}</TableCell>
+                            </TableRow>
+                             <TableRow>
+                                <TableCell>Orçamento Restante</TableCell>
+                                <TableCell className="text-right font-bold">{formatCurrency(project.totalBudget - (totalSpent - totalPending))}</TableCell>
+                            </TableRow>
+                        </TableBody>
+                    </Table>
+                </CardContent>
+            </Card>
+             <Card>
+                <CardHeader>
+                    <CardTitle>Resumo do Cronograma</CardTitle>
+                </CardHeader>
+                <CardContent>
+                    <Table>
+                        <TableBody>
+                            <TableRow>
+                                <TableCell>Total de Tarefas</TableCell>
+                                <TableCell className="text-right font-bold">{tasks.length}</TableCell>
+                            </TableRow>
+                             <TableRow>
+                                <TableCell>Tarefas Concluídas</TableCell>
+                                <TableCell className="text-right font-bold">{tasksCompleted}</TableCell>
+                            </TableRow>
+                            <TableRow>
+                                <TableCell>Progresso</TableCell>
+                                <TableCell className="text-right font-bold">{tasks.length > 0 ? `${((tasksCompleted / tasks.length) * 100).toFixed(0)}%` : 'N/A'}</TableCell>
+                            </TableRow>
+                        </TableBody>
+                    </Table>
+                </CardContent>
+            </Card>
+          </div>
           
           <Card>
             <CardHeader>
@@ -141,6 +210,41 @@ function ReportsPage() {
               </ResponsiveContainer>
             </CardContent>
           </Card>
+          
+           <Card>
+                <CardHeader>
+                    <CardTitle className="flex items-center gap-2"><AlertCircle className="text-destructive"/> Contas a Pagar</CardTitle>
+                    <CardDescription>Despesas registradas que ainda não foram quitadas.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <Table>
+                        <TableHeader>
+                            <TableRow>
+                                <TableHead>Descrição</TableHead>
+                                <TableHead>Fornecedor</TableHead>
+                                <TableHead>Data</TableHead>
+                                <TableHead className="text-right">Valor</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                             {pendingExpenses.length === 0 ? (
+                                <TableRow>
+                                    <TableCell colSpan={4} className="text-center text-muted-foreground">Nenhuma conta a pagar.</TableCell>
+                                </TableRow>
+                            ) : (
+                                pendingExpenses.map(expense => (
+                                    <TableRow key={expense.id}>
+                                        <TableCell>{expense.description}</TableCell>
+                                        <TableCell>{expense.supplier}</TableCell>
+                                        <TableCell>{formatDate(expense.date)}</TableCell>
+                                        <TableCell className="text-right">{formatCurrency(expense.amount)}</TableCell>
+                                    </TableRow>
+                                ))
+                            )}
+                        </TableBody>
+                    </Table>
+                </CardContent>
+            </Card>
 
           <Card>
             <CardHeader>
@@ -158,7 +262,7 @@ function ReportsPage() {
                   ) : (
                     <Bot className="mr-2 h-4 w-4" />
                   )}
-                  Gerar Resumo da IA
+                  Gerar Análise com IA
                 </Button>
 
               {(isLoading || summary) && (
@@ -167,6 +271,7 @@ function ReportsPage() {
                           {isLoading ? (
                               <div className="space-y-2">
                                   <p className="animate-pulse">Analisando despesas...</p>
+                                  <p className="animate-pulse w-3/4">Aguarde, a inteligência artificial está trabalhando...</p>
                               </div>
                           ) : (
                               <div className="prose prose-sm dark:prose-invert max-w-none whitespace-pre-wrap">

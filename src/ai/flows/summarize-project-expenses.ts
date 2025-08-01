@@ -18,7 +18,7 @@ const SummarizeProjectExpensesInputSchema = z.object({
 export type SummarizeProjectExpensesInput = z.infer<typeof SummarizeProjectExpensesInputSchema>;
 
 const SummarizeProjectExpensesOutputSchema = z.object({
-  summary: z.string().describe('A summary of the project expenses, including areas where costs can be reduced.'),
+  summary: z.string().describe('Uma análise concisa em português sobre os gastos do projeto, destacando os pontos principais e sugerindo áreas para redução de custos.'),
 });
 export type SummarizeProjectExpensesOutput = z.infer<typeof SummarizeProjectExpensesOutputSchema>;
 
@@ -30,12 +30,16 @@ const prompt = ai.definePrompt({
   name: 'summarizeProjectExpensesPrompt',
   input: {schema: SummarizeProjectExpensesInputSchema},
   output: {schema: SummarizeProjectExpensesOutputSchema},
-  prompt: `You are an expert project manager specializing in cost reduction.
+  prompt: `Você é um gestor de projetos especialista em redução de custos para construção civil.
 
-You will use the project parameters and expense reports to identify areas where costs can be reduced. Provide a summary of the expenses, and suggest areas for cost reduction based on project parameters.
+Analise os parâmetros do projeto e os relatórios de despesas para identificar áreas onde os custos podem ser reduzidos.
 
-Project Parameters: {{{projectParameters}}}
-Expense Reports: {{{expenseReports}}}`,
+Sua resposta deve ser em **PORTUGUÊS**.
+
+Forneça um resumo dos gastos e sugira áreas específicas para economia, sempre se baseando nos parâmetros do projeto. Seja claro e objetivo.
+
+Parâmetros do Projeto: {{{projectParameters}}}
+Relatórios de Despesas: {{{expenseReports}}}`,
 });
 
 const summarizeProjectExpensesFlow = ai.defineFlow(
