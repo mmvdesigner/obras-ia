@@ -29,11 +29,11 @@ const expenseSchema = z.object({
   unit: z.string().optional(),
 }).refine(data => {
     if (data.category === 'material') {
-        return !!data.materialName && (data.quantity ?? 0) > 0 && (data.unitPrice ?? 0) > 0;
+        return !!data.materialName && (data.quantity ?? 0) > 0 && (data.unitPrice ?? 0) > 0 && !!data.unit;
     }
     return true;
 }, {
-    message: "Para a categoria 'Material', o nome, quantidade e preço unitário são obrigatórios.",
+    message: "Para a categoria 'Material', o nome, quantidade, unidade e preço unitário são obrigatórios.",
     path: ['materialName'], // You can choose which field to show the error on
 });
 
@@ -84,7 +84,7 @@ export function ExpenseForm({ expense, onFinished, projectId }: ExpenseFormProps
   useEffect(() => {
     if(watchedCategory === 'material' && watchedQuantity && watchedUnitPrice) {
         const total = watchedQuantity * watchedUnitPrice;
-        form.setValue('amount', total);
+        form.setValue('amount', total, { shouldValidate: true });
     }
   }, [watchedQuantity, watchedUnitPrice, watchedCategory, form])
 

@@ -10,7 +10,9 @@ export function useLocalStorage<T>(key: string, initialValue: T): [T, (value: T 
     try {
       const item = window.localStorage.getItem(key);
       if (item) {
-        setStoredValue(JSON.parse(item));
+        // Combine stored data with initial data to ensure all keys are present
+        const parsedItem = JSON.parse(item);
+        setStoredValue({ ...initialValue, ...parsedItem });
       } else {
         window.localStorage.setItem(key, JSON.stringify(initialValue));
         setStoredValue(initialValue);

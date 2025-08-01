@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, ReactNode } from 'react';
+import React, { createContext, useContext, ReactNode, useEffect } from 'react';
 import { useLocalStorage } from './use-local-storage';
 import { initialData } from '@/lib/data';
 import type { AppData, Project, Employee, Expense, Task, InventoryItem } from '@/lib/types';
@@ -29,6 +29,13 @@ const generateId = () => new Date().getTime().toString();
 
 export function DataProvider({ children }: { children: ReactNode }) {
   const [data, setData] = useLocalStorage<AppData>('buildwise-data', initialData);
+
+  useEffect(() => {
+    // Ensure inventory is never undefined
+    if (!data.inventory) {
+      setData(prevData => ({ ...prevData, inventory: [] }));
+    }
+  }, [data.inventory, setData]);
 
   const addProject = (project: Omit<Project, 'id'>) => {
     const newProject = { ...project, id: generateId() };
@@ -65,7 +72,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const addExpense = (expense: Omit<Expense, 'id'>) => {
     const newExpense = { ...expense, id: generateId() };
     setData(prevData => {
-        let newInventory = [...prevData.inventory];
+        let newInventory = [...(prevData.inventory || [])];
         if (expense.category === 'material' && expense.materialName && expense.quantity && expense.unitPrice) {
             const itemIndex = newInventory.findIndex(i => i.projectId === expense.projectId && i.name.toLowerCase() === expense.materialName!.toLowerCase());
             
@@ -87,7 +94,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
                     projectId: expense.projectId,
                     name: expense.materialName,
                     quantity: expense.quantity,
-                    unit: 'unidade', // default unit, maybe this should be in the form
+                    unit: expense.unit || 'unidade',
                     averagePrice: expense.unitPrice,
                 });
             }
@@ -128,7 +135,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   const addInventoryItem = (item: Omit<InventoryItem, 'id'>) => {
     const newItem = { ...item, id: generateId() };
-    setData(prevData => ({...prevData, inventory: [...prevData.inventory, newItem]}));
+    setData(prevData => ({...prevData, inventory: [...(prevData.inventory || []), newItem]}));
   };
 
   return (

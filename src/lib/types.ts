@@ -51,6 +51,7 @@ export interface Expense {
   materialName?: string;
   quantity?: number;
   unitPrice?: number;
+  unit?: string;
 }
 
 export type TaskStatus = 'nao iniciada' | 'em andamento' | 'concluída';
