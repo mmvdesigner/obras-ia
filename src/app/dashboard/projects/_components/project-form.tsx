@@ -11,6 +11,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import type { Project } from '@/lib/types';
 import { useData } from '@/hooks/use-data';
 import { useToast } from '@/hooks/use-toast';
+import { useState } from 'react';
+import { FileText, Trash2, Upload } from 'lucide-react';
 
 const projectSchema = z.object({
   name: z.string().min(1, 'Nome é obrigatório'),
@@ -21,6 +23,7 @@ const projectSchema = z.object({
   status: z.enum(['planejamento', 'em andamento', 'pausada', 'concluída']),
   totalBudget: z.coerce.number().min(0, 'Orçamento deve ser positivo'),
   description: z.string().optional(),
+  files: z.array(z.string()),
 });
 
 type ProjectFormValues = z.infer<typeof projectSchema>;
@@ -33,15 +36,18 @@ interface ProjectFormProps {
 export function ProjectForm({ project, onFinished }: ProjectFormProps) {
   const { addProject, updateProject } = useData();
   const { toast } = useToast();
+  const [fileName, setFileName] = useState('');
 
   const defaultValues: Partial<ProjectFormValues> = project
     ? {
         ...project,
         startDate: project.startDate.split('T')[0],
         endDate: project.endDate.split('T')[0],
+        files: project.files || [],
       }
     : {
         status: 'planejamento',
+        files: [],
       };
 
   const form = useForm<ProjectFormValues>({
@@ -51,14 +57,28 @@ export function ProjectForm({ project, onFinished }: ProjectFormProps) {
 
   const onSubmit = (data: ProjectFormValues) => {
     if (project) {
-      updateProject({ ...project, ...data, files: project.files || [] });
+      updateProject({ ...project, ...data });
       toast({ title: 'Obra atualizada!', description: 'Os dados da obra foram salvos.' });
     } else {
-      addProject({ ...data, files: [] });
+      addProject(data);
       toast({ title: 'Obra criada!', description: 'A nova obra foi adicionada com sucesso.' });
     }
     onFinished();
   };
+  
+  const handleAddFile = () => {
+    if (fileName.trim()) {
+        const currentFiles = form.getValues('files');
+        form.setValue('files', [...currentFiles, fileName.trim()]);
+        setFileName('');
+    }
+  };
+
+  const handleRemoveFile = (fileToRemove: string) => {
+    const currentFiles = form.getValues('files');
+    form.setValue('files', currentFiles.filter(f => f !== fileToRemove));
+  };
+
 
   return (
     <Form {...form}>
@@ -181,6 +201,43 @@ export function ProjectForm({ project, onFinished }: ProjectFormProps) {
             </FormItem>
           )}
         />
+        
+        <FormField
+          control={form.control}
+          name="files"
+          render={() => (
+            <FormItem>
+              <FormLabel>Documentos da Obra</FormLabel>
+              <div className="flex gap-2">
+                <Input 
+                    type="text" 
+                    placeholder="Nome do arquivo (ex: planta.pdf)" 
+                    value={fileName}
+                    onChange={(e) => setFileName(e.target.value)}
+                />
+                <Button type="button" onClick={handleAddFile} variant="outline">
+                    <Upload className="mr-2 h-4 w-4" /> Adicionar
+                </Button>
+              </div>
+               <div className="space-y-2 mt-2">
+                 {form.getValues('files').map((file, index) => (
+                    <div key={index} className="flex items-center justify-between rounded-md border p-2">
+                        <div className="flex items-center gap-2">
+                            <FileText className="h-4 w-4 text-muted-foreground" />
+                            <span className="text-sm">{file}</span>
+                        </div>
+                        <Button type="button" variant="ghost" size="icon" onClick={() => handleRemoveFile(file)}>
+                            <Trash2 className="h-4 w-4 text-destructive" />
+                        </Button>
+                    </div>
+                 ))}
+               </div>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+
         <Button type="submit">{project ? 'Salvar Alterações' : 'Criar Obra'}</Button>
       </form>
     </Form>

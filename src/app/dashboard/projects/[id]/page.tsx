@@ -2,7 +2,7 @@
 import {useRouter, useParams} from 'next/navigation';
 import React from 'react';
 import {useData} from '@/hooks/use-data';
-import {ArrowLeft, Building2, CalendarClock, DollarSign, Users, Package} from 'lucide-react';
+import {ArrowLeft, Building2, CalendarClock, DollarSign, Users, Package, FileText} from 'lucide-react';
 
 import {Button} from '@/components/ui/button';
 import {Card, CardContent, CardDescription, CardHeader, CardTitle} from '@/components/ui/card';
@@ -74,7 +74,7 @@ export default function ProjectDetailsPage() {
               <CardDescription>Informações gerais sobre o projeto.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <h3 className="font-medium">Cliente</h3>
                   <p className="text-muted-foreground">{project.client}</p>
@@ -91,7 +91,7 @@ export default function ProjectDetailsPage() {
                   <h3 className="font-medium">Data de Término</h3>
                   <p className="text-muted-foreground">{formatDate(project.endDate)}</p>
                 </div>
-                <div>
+                <div className="md:col-span-2">
                   <h3 className="font-medium">Orçamento Total</h3>
                   <p className="text-muted-foreground">{formatCurrency(project.totalBudget)}</p>
                 </div>
@@ -100,6 +100,21 @@ export default function ProjectDetailsPage() {
                 <h3 className="font-medium">Descrição</h3>
                 <p className="text-muted-foreground">{project.description}</p>
               </div>
+               <div>
+                  <h3 className="font-medium">Documentos</h3>
+                  {project.files && project.files.length > 0 ? (
+                    <ul className="mt-2 space-y-2">
+                      {project.files.map((file, index) => (
+                        <li key={index} className="flex items-center gap-2 text-sm text-muted-foreground">
+                          <FileText className="h-4 w-4" />
+                          <span>{file}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="text-sm text-muted-foreground mt-2">Nenhum documento adicionado.</p>
+                  )}
+                </div>
             </CardContent>
           </Card>
         </TabsContent>
