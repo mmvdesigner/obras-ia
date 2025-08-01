@@ -1,26 +1,28 @@
 'use client';
 
-import React, { createContext, useContext, ReactNode } from 'react';
-import { useLocalStorage } from './use-local-storage';
+import React, { createContext, useContext, ReactNode, useState, useEffect, useCallback } from 'react';
+import { db } from '@/lib/firebase';
+import { collection, onSnapshot, addDoc, updateDoc, deleteDoc, doc, writeBatch, getDocs, query } from 'firebase/firestore';
 import { initialData } from '@/lib/data';
 import type { AppData, Project, Employee, Expense, Task, InventoryItem } from '@/lib/types';
+import { useAuth } from './use-auth';
 
 interface DataContextType {
   data: AppData;
-  setData: (value: AppData | ((val: AppData) => AppData)) => void;
-  addProject: (project: Omit<Project, 'id'>) => void;
-  updateProject: (project: Project) => void;
-  deleteProject: (projectId: string) => void;
-  addEmployee: (employee: Omit<Employee, 'id'>) => void;
-  updateEmployee: (employee: Employee) => void;
-  deleteEmployee: (employeeId: string) => void;
-  addExpense: (expense: Omit<Expense, 'id'>) => void;
-  updateExpense: (expense: Expense) => void;
-  deleteExpense: (expenseId: string) => void;
-  addTask: (task: Omit<Task, 'id'>) => void;
-  updateTask: (task: Task) => void;
-  deleteTask: (taskId: string) => void;
-  addInventoryItem: (item: Omit<InventoryItem, 'id'>) => void;
+  loading: boolean;
+  addProject: (project: Omit<Project, 'id'>) => Promise<void>;
+  updateProject: (project: Project) => Promise<void>;
+  deleteProject: (projectId: string) => Promise<void>;
+  addEmployee: (employee: Omit<Employee, 'id'>) => Promise<void>;
+  updateEmployee: (employee: Employee) => Promise<void>;
+  deleteEmployee: (employeeId: string) => Promise<void>;
+  addExpense: (expense: Omit<Expense, 'id'>) => Promise<void>;
+  updateExpense: (expense: Expense) => Promise<void>;
+  deleteExpense: (expenseId: string) => Promise<void>;
+  addTask: (task: Omit<Task, 'id'>) => Promise<void>;
+  updateTask: (task: Task) => Promise<void>;
+  deleteTask: (taskId: string) => Promise<void>;
+  addInventoryItem: (item: Omit<InventoryItem, 'id'>) => Promise<void>;
 }
 
 const DataContext = createContext<DataContextType | undefined>(undefined);
@@ -28,111 +30,178 @@ const DataContext = createContext<DataContextType | undefined>(undefined);
 const generateId = () => new Date().getTime().toString();
 
 export function DataProvider({ children }: { children: ReactNode }) {
-  const [data, setData] = useLocalStorage<AppData>('buildwise-data', initialData);
+  const [data, setData] = useState<AppData>(initialData);
+  const [loading, setLoading] = useState(true);
+  const { user } = useAuth() as any; // Use 'any' to avoid circular dependency issues
 
-  const addProject = (project: Omit<Project, 'id'>) => {
-    const newProject = { ...project, id: generateId(), files: project.files || [] };
-    setData(prevData => ({ ...prevData, projects: [...prevData.projects, newProject] }));
+  const seedDatabase = useCallback(async () => {
+    console.log("Checking if database needs seeding...");
+    const projectsQuery = query(collection(db, "projects"));
+    const projectsSnapshot = await getDocs(projectsQuery);
+    if (projectsSnapshot.empty) {
+        console.log("Database is empty. Seeding with initial data...");
+        const batch = writeBatch(db);
+
+        initialData.users.forEach(item => {
+            const docRef = doc(db, "users", item.id);
+            batch.set(docRef, item);
+        });
+        initialData.projects.forEach(item => {
+            const docRef = doc(db, "projects", item.id);
+            batch.set(docRef, item);
+        });
+        initialData.employees.forEach(item => {
+            const docRef = doc(db, "employees", item.id);
+            batch.set(docRef, item);
+        });
+        initialData.expenses.forEach(item => {
+            const docRef = doc(db, "expenses", item.id);
+            batch.set(docRef, item);
+        });
+        initialData.tasks.forEach(item => {
+            const docRef = doc(db, "tasks", item.id);
+            batch.set(docRef, item);
+        });
+        initialData.inventory.forEach(item => {
+            const docRef = doc(db, "inventory", item.id);
+            batch.set(docRef, item);
+        });
+
+        await batch.commit();
+        console.log("Database seeded successfully.");
+    } else {
+        console.log("Database already has data. No seeding required.");
+    }
+  }, []);
+
+  useEffect(() => {
+    if (user) { // Only fetch data if a user is logged in
+        seedDatabase(); // Check if we need to seed the database
+        
+        const collections: (keyof AppData)[] = ['users', 'projects', 'employees', 'expenses', 'tasks', 'inventory'];
+        const unsubscribes = collections.map(collectionName => {
+            return onSnapshot(collection(db, collectionName), (snapshot) => {
+                const items = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as any;
+                setData(prevData => ({ ...prevData, [collectionName]: items }));
+                setLoading(false);
+            }, (error) => {
+                console.error(`Error fetching ${collectionName}:`, error);
+                setLoading(false);
+            });
+        });
+
+        return () => unsubscribes.forEach(unsub => unsub());
+    } else {
+        setLoading(false);
+        setData(initialData); // Reset to initial local data if logged out
+    }
+  }, [user, seedDatabase]);
+
+  // Firestore operations
+  const addProject = async (project: Omit<Project, 'id'>) => {
+    await addDoc(collection(db, 'projects'), project);
   };
 
-  const updateProject = (updatedProject: Project) => {
-    setData(prevData => ({
-      ...prevData,
-      projects: prevData.projects.map(p => (p.id === updatedProject.id ? updatedProject : p)),
-    }));
+  const updateProject = async (updatedProject: Project) => {
+    const { id, ...data } = updatedProject;
+    await updateDoc(doc(db, 'projects', id), data);
   };
 
-  const deleteProject = (projectId: string) => {
-    setData(prevData => ({ ...prevData, projects: prevData.projects.filter(p => p.id !== projectId) }));
-  };
-
-  const addEmployee = (employee: Omit<Employee, 'id'>) => {
-    const newEmployee = { ...employee, id: generateId() };
-    setData(prevData => ({ ...prevData, employees: [...prevData.employees, newEmployee] }));
-  };
-
-  const updateEmployee = (updatedEmployee: Employee) => {
-    setData(prevData => ({
-      ...prevData,
-      employees: prevData.employees.map(e => (e.id === updatedEmployee.id ? updatedEmployee : e)),
-    }));
-  };
-
-  const deleteEmployee = (employeeId: string) => {
-    setData(prevData => ({ ...prevData, employees: prevData.employees.filter(e => e.id !== employeeId) }));
+  const deleteProject = async (projectId: string) => {
+    await deleteDoc(doc(db, 'projects', projectId));
   };
   
-  const addExpense = (expense: Omit<Expense, 'id'>) => {
-    const newExpense = { ...expense, id: generateId() };
-    setData(prevData => {
-        let newInventory = [...(prevData.inventory || [])];
-        if (expense.category === 'material' && expense.materialName && expense.quantity && expense.unitPrice) {
-            const itemIndex = newInventory.findIndex(i => i.projectId === expense.projectId && i.name.toLowerCase() === expense.materialName!.toLowerCase());
-            
-            if (itemIndex > -1) {
-                // Update existing item
-                const existingItem = newInventory[itemIndex];
-                const totalQuantity = existingItem.quantity + expense.quantity;
-                const newAveragePrice = ((existingItem.quantity * existingItem.averagePrice) + (expense.quantity * expense.unitPrice)) / totalQuantity;
-                
-                newInventory[itemIndex] = {
-                    ...existingItem,
-                    quantity: totalQuantity,
-                    averagePrice: newAveragePrice,
-                };
-            } else {
-                // Add new item
-                newInventory.push({
-                    id: generateId(),
-                    projectId: expense.projectId,
-                    name: expense.materialName,
-                    quantity: expense.quantity,
-                    unit: expense.unit || 'unidade',
-                    averagePrice: expense.unitPrice,
-                });
-            }
-        }
-        return { ...prevData, expenses: [...prevData.expenses, newExpense], inventory: newInventory };
-    });
-  };
-  
-  const updateExpense = (updatedExpense: Expense) => {
-    setData(prevData => ({
-      ...prevData,
-      // Note: Updating inventory based on an updated expense is complex and not implemented here.
-      // It would require knowing the original state of the expense.
-      expenses: prevData.expenses.map(e => (e.id === updatedExpense.id ? updatedExpense : e)),
-    }));
-  };
-  
-  const deleteExpense = (expenseId: string) => {
-     // Note: Deleting inventory based on a deleted expense is complex and not implemented here.
-    setData(prevData => ({ ...prevData, expenses: prevData.expenses.filter(e => e.id !== expenseId) }));
-  };
-  
-  const addTask = (task: Omit<Task, 'id'>) => {
-    const newTask = { ...task, id: generateId() };
-    setData(prevData => ({ ...prevData, tasks: [...prevData.tasks, newTask] }));
-  };
-  
-  const updateTask = (updatedTask: Task) => {
-    setData(prevData => ({
-      ...prevData,
-      tasks: prevData.tasks.map(t => (t.id === updatedTask.id ? updatedTask : t)),
-    }));
-  };
-  
-  const deleteTask = (taskId: string) => {
-    setData(prevData => ({ ...prevData, tasks: prevData.tasks.filter(t => t.id !== taskId) }));
+  const addEmployee = async (employee: Omit<Employee, 'id'>) => {
+    await addDoc(collection(db, 'employees'), employee);
   };
 
-  const addInventoryItem = (item: Omit<InventoryItem, 'id'>) => {
-    const newItem = { ...item, id: generateId() };
-    setData(prevData => ({...prevData, inventory: [...(prevData.inventory || []), newItem]}));
+  const updateEmployee = async (updatedEmployee: Employee) => {
+    const { id, ...data } = updatedEmployee;
+    await updateDoc(doc(db, 'employees', id), data);
+  };
+
+  const deleteEmployee = async (employeeId: string) => {
+    await deleteDoc(doc(db, 'employees', employeeId));
+  };
+  
+  const addExpense = async (expense: Omit<Expense, 'id'>) => {
+      const docRef = await addDoc(collection(db, 'expenses'), expense);
+      
+      // Update inventory
+      if (expense.category === 'material' && expense.materialName && expense.quantity && expense.unitPrice) {
+          const inventoryQuery = query(collection(db, 'inventory'));
+          const inventorySnapshot = await getDocs(inventoryQuery);
+          const inventoryItems = inventorySnapshot.docs.map(doc => ({id: doc.id, ...doc.data()})) as InventoryItem[];
+
+          const itemIndex = inventoryItems.findIndex(i => i.projectId === expense.projectId && i.name.toLowerCase() === expense.materialName!.toLowerCase());
+          
+          if (itemIndex > -1) {
+              const existingItem = inventoryItems[itemIndex];
+              const totalQuantity = existingItem.quantity + expense.quantity;
+              const newAveragePrice = ((existingItem.quantity * existingItem.averagePrice) + (expense.quantity * expense.unitPrice)) / totalQuantity;
+              
+              await updateDoc(doc(db, 'inventory', existingItem.id), {
+                  quantity: totalQuantity,
+                  averagePrice: newAveragePrice,
+              });
+          } else {
+              await addDoc(collection(db, 'inventory'), {
+                  projectId: expense.projectId,
+                  name: expense.materialName,
+                  quantity: expense.quantity,
+                  unit: expense.unit || 'unidade',
+                  averagePrice: expense.unitPrice,
+              });
+          }
+      }
+  };
+  
+  const updateExpense = async (updatedExpense: Expense) => {
+    const { id, ...data } = updatedExpense;
+    await updateDoc(doc(db, 'expenses', id), data);
+  };
+  
+  const deleteExpense = async (expenseId: string) => {
+    await deleteDoc(doc(db, 'expenses', expenseId));
+  };
+
+  const addTask = async (task: Omit<Task, 'id'>) => {
+    await addDoc(collection(db, 'tasks'), task);
+  };
+  
+  const updateTask = async (updatedTask: Task) => {
+    const { id, ...data } = updatedTask;
+    await updateDoc(doc(db, 'tasks', id), data);
+  };
+  
+  const deleteTask = async (taskId: string) => {
+    await deleteDoc(doc(db, 'tasks', taskId));
+  };
+
+  const addInventoryItem = async (item: Omit<InventoryItem, 'id'>) => {
+    await addDoc(collection(db, 'inventory'), item);
+  };
+
+  const value: DataContextType = {
+    data,
+    loading,
+    addProject,
+    updateProject,
+    deleteProject,
+    addEmployee,
+    updateEmployee,
+    deleteEmployee,
+    addExpense,
+    updateExpense,
+    deleteExpense,
+    addTask,
+    updateTask,
+    deleteTask,
+    addInventoryItem
   };
 
   return (
-    <DataContext.Provider value={{ data, setData, addProject, updateProject, deleteProject, addEmployee, updateEmployee, deleteEmployee, addExpense, updateExpense, deleteExpense, addTask, updateTask, deleteTask, addInventoryItem }}>
+    <DataContext.Provider value={value}>
       {children}
     </DataContext.Provider>
   );
