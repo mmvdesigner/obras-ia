@@ -3,7 +3,7 @@
 import { useState, useMemo, useRef } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { Bot, Loader2, Printer } from 'lucide-react';
-import { useData } from '@/hooks/use-data';
+import { DataProvider, useData } from '@/hooks/use-data';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
