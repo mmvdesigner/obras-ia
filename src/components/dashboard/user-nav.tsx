@@ -16,7 +16,7 @@ import { useAuth } from '@/hooks/use-auth';
 export function UserNav() {
   const { user, logout } = useAuth();
 
-  if (!user) {
+  if (!user || !user.name) {
     return null;
   }
 
