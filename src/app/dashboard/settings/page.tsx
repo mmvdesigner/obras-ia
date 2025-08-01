@@ -3,7 +3,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { useAuth } from '@/hooks/use-auth';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
-import { AuthProvider } from '@/hooks/use-auth';
 
 function SettingsPageContent() {
     const { user, loading } = useAuth();
@@ -15,8 +14,8 @@ function SettingsPageContent() {
         }
     }, [user, loading, router]);
 
-    if(loading || user?.role !== 'Administrator') {
-        return <div className="flex h-full w-full items-center justify-center">Carregando...</div>
+    if(loading || !user || user?.role !== 'Administrator') {
+        return <div className="flex h-full w-full items-center justify-center">Carregando ou acesso não autorizado...</div>
     }
 
     return (
@@ -40,8 +39,6 @@ function SettingsPageContent() {
 
 export default function SettingsPage() {
     return (
-        <AuthProvider>
-            <SettingsPageContent />
-        </AuthProvider>
-    )
+        <SettingsPageContent />
+    );
 }

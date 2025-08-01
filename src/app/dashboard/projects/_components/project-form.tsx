@@ -1,6 +1,6 @@
 'use client';
 
-import { useForm } from 'react-hook-form';
+import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Button } from '@/components/ui/button';
@@ -23,7 +23,7 @@ const projectSchema = z.object({
   status: z.enum(['planejamento', 'em andamento', 'pausada', 'concluída']),
   totalBudget: z.coerce.number().min(0, 'Orçamento deve ser positivo'),
   description: z.string().optional(),
-  files: z.array(z.string()),
+  files: z.array(z.string()).optional(),
 });
 
 type ProjectFormValues = z.infer<typeof projectSchema>;
@@ -55,12 +55,17 @@ export function ProjectForm({ project, onFinished }: ProjectFormProps) {
     defaultValues,
   });
 
+  const { fields, append, remove } = useFieldArray({
+    control: form.control,
+    name: "files" as any,
+  });
+
   const onSubmit = (data: ProjectFormValues) => {
     if (project) {
       updateProject({ ...project, ...data });
       toast({ title: 'Obra atualizada!', description: 'Os dados da obra foram salvos.' });
     } else {
-      addProject(data);
+      addProject(data as Omit<Project, 'id'>);
       toast({ title: 'Obra criada!', description: 'A nova obra foi adicionada com sucesso.' });
     }
     onFinished();
@@ -68,15 +73,13 @@ export function ProjectForm({ project, onFinished }: ProjectFormProps) {
   
   const handleAddFile = () => {
     if (fileName.trim()) {
-        const currentFiles = form.getValues('files');
-        form.setValue('files', [...currentFiles, fileName.trim()]);
+        append(fileName.trim());
         setFileName('');
     }
   };
 
-  const handleRemoveFile = (fileToRemove: string) => {
-    const currentFiles = form.getValues('files');
-    form.setValue('files', currentFiles.filter(f => f !== fileToRemove));
+  const handleRemoveFile = (index: number) => {
+    remove(index);
   };
 
 
@@ -202,40 +205,40 @@ export function ProjectForm({ project, onFinished }: ProjectFormProps) {
           )}
         />
         
-        <FormField
-          control={form.control}
-          name="files"
-          render={() => (
-            <FormItem>
-              <FormLabel>Documentos da Obra</FormLabel>
-              <div className="flex gap-2">
-                <Input 
-                    type="text" 
-                    placeholder="Nome do arquivo (ex: planta.pdf)" 
-                    value={fileName}
-                    onChange={(e) => setFileName(e.target.value)}
-                />
-                <Button type="button" onClick={handleAddFile} variant="outline">
-                    <Upload className="mr-2 h-4 w-4" /> Adicionar
-                </Button>
-              </div>
-               <div className="space-y-2 mt-2">
-                 {form.getValues('files').map((file, index) => (
-                    <div key={index} className="flex items-center justify-between rounded-md border p-2">
-                        <div className="flex items-center gap-2">
-                            <FileText className="h-4 w-4 text-muted-foreground" />
-                            <span className="text-sm">{file}</span>
-                        </div>
-                        <Button type="button" variant="ghost" size="icon" onClick={() => handleRemoveFile(file)}>
-                            <Trash2 className="h-4 w-4 text-destructive" />
-                        </Button>
+        <FormItem>
+          <FormLabel>Documentos da Obra</FormLabel>
+          <div className="flex gap-2">
+            <Input 
+                type="text" 
+                placeholder="Nome do arquivo (ex: planta.pdf)" 
+                value={fileName}
+                onChange={(e) => setFileName(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    handleAddFile();
+                  }
+                }}
+            />
+            <Button type="button" onClick={handleAddFile} variant="outline">
+                <Upload className="mr-2 h-4 w-4" /> Adicionar
+            </Button>
+          </div>
+            <div className="space-y-2 mt-2">
+              {fields.map((field, index) => (
+                <div key={field.id} className="flex items-center justify-between rounded-md border p-2">
+                    <div className="flex items-center gap-2">
+                        <FileText className="h-4 w-4 text-muted-foreground" />
+                        <span className="text-sm">{field.value}</span>
                     </div>
-                 ))}
-               </div>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+                    <Button type="button" variant="ghost" size="icon" onClick={() => handleRemoveFile(index)}>
+                        <Trash2 className="h-4 w-4 text-destructive" />
+                    </Button>
+                </div>
+              ))}
+            </div>
+          <FormMessage />
+        </FormItem>
 
 
         <Button type="submit">{project ? 'Salvar Alterações' : 'Criar Obra'}</Button>

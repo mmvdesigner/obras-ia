@@ -33,7 +33,11 @@ export function MainNav({ user }: { user: User | null }) {
           return null;
         }
 
-        const isActive = pathname.startsWith(item.href);
+        // Exact match for dashboard, startsWith for others
+        const isActive = item.href === '/dashboard' 
+          ? pathname === item.href 
+          : pathname.startsWith(item.href);
+          
         return (
           <SidebarMenuItem key={item.href}>
             <Link href={item.href}>
