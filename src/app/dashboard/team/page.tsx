@@ -1,14 +1,16 @@
 'use client';
 
-import { DataProvider } from '@/hooks/use-data';
-// The rest of your page content will be in a separate component
-// to ensure it's a client component and can use hooks.
+// This page is no longer used directly.
+// The content is now rendered within the project details page.
 import TeamPageContent from './_components/team-page-content';
 
 export default function TeamPage() {
   return (
-    <DataProvider>
-      <TeamPageContent />
-    </DataProvider>
+    <div>
+        <h1 className="text-2xl font-bold mb-4">Gerenciamento de Equipe</h1>
+        <p className="text-muted-foreground">
+            Selecione uma obra na página de <a href="/dashboard/projects" className="underline">Obras</a> para ver a equipe associada.
+        </p>
+    </div>
   );
 }

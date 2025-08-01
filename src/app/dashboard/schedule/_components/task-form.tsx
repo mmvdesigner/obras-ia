@@ -13,7 +13,7 @@ import { useToast } from '@/hooks/use-toast';
 
 const taskSchema = z.object({
   name: z.string().min(1, 'Nome é obrigatório'),
-  projectId: z.string().min(1, 'Selecione um projeto'),
+  projectId: z.string().min(1, 'Obra é obrigatória'),
   responsible: z.string().min(1, 'Responsável é obrigatório'),
   startDate: z.string().min(1, 'Data de início é obrigatória'),
   endDate: z.string().min(1, 'Data de término é obrigatória'),
@@ -26,9 +26,10 @@ type TaskFormValues = z.infer<typeof taskSchema>;
 interface TaskFormProps {
   task?: Task | null;
   onFinished: () => void;
+  projectId: string;
 }
 
-export function TaskForm({ task, onFinished }: TaskFormProps) {
+export function TaskForm({ task, onFinished, projectId }: TaskFormProps) {
   const { data, addTask, updateTask } = useData();
   const { toast } = useToast();
 
@@ -41,6 +42,7 @@ export function TaskForm({ task, onFinished }: TaskFormProps) {
     : { 
         status: 'nao iniciada',
         priority: 'media',
+        projectId,
       };
 
   const form = useForm<TaskFormValues>({
@@ -62,6 +64,17 @@ export function TaskForm({ task, onFinished }: TaskFormProps) {
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+         <FormField
+            control={form.control}
+            name="projectId"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Obra</FormLabel>
+                <Input disabled value={data.projects.find(p => p.id === projectId)?.name} />
+                <FormMessage />
+              </FormItem>
+            )}
+          />
         <FormField
           control={form.control}
           name="name"
@@ -75,26 +88,7 @@ export function TaskForm({ task, onFinished }: TaskFormProps) {
             </FormItem>
           )}
         />
-        <FormField
-          control={form.control}
-          name="projectId"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Obra</FormLabel>
-              <Select onValueChange={field.onChange} defaultValue={field.value}>
-                <FormControl>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione um projeto" />
-                  </SelectTrigger>
-                </FormControl>
-                <SelectContent>
-                  {data.projects.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
-                </SelectContent>
-              </Select>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+       
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <FormField
             control={form.control}
@@ -136,7 +130,7 @@ export function TaskForm({ task, onFinished }: TaskFormProps) {
                   </SelectTrigger>
                 </FormControl>
                 <SelectContent>
-                  {data.employees.filter(e => e.status === 'ativo').map(e => <SelectItem key={e.id} value={e.name}>{e.name}</SelectItem>)}
+                  {data.employees.filter(e => e.status === 'ativo' && e.linkedProjectIds.includes(projectId)).map(e => <SelectItem key={e.id} value={e.name}>{e.name}</SelectItem>)}
                 </SelectContent>
               </Select>
               <FormMessage />
@@ -170,7 +164,7 @@ export function TaskForm({ task, onFinished }: TaskFormProps) {
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Prioridade</FormLabel>
-                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                <Select onValuechange={field.onChange} defaultValue={field.value}>
                   <FormControl>
                     <SelectTrigger><SelectValue /></SelectTrigger>
                   </FormControl>

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { PlusCircle, MoreHorizontal } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -12,10 +12,19 @@ import type { Employee } from '@/lib/types';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { EmployeeForm } from './employee-form';
 
-export default function TeamPageContent() {
+interface TeamPageContentProps {
+  projectId: string;
+}
+
+export default function TeamPageContent({ projectId }: TeamPageContentProps) {
   const { data, deleteEmployee } = useData();
   const [open, setOpen] = useState(false);
   const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
+
+  const projectEmployees = useMemo(
+    () => data.employees.filter(e => e.linkedProjectIds.includes(projectId)),
+    [data.employees, projectId]
+  );
 
   const handleEdit = (employee: Employee) => {
     setEditingEmployee(employee);
@@ -29,22 +38,19 @@ export default function TeamPageContent() {
   
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight">Equipe</h1>
-            <p className="text-muted-foreground">Gerencie os funcionários da sua equipe.</p>
-          </div>
-          <DialogTrigger asChild>
-            <Button onClick={handleAddNew}>
-              <PlusCircle className="mr-2 h-4 w-4" /> Novo Funcionário
-            </Button>
-          </DialogTrigger>
-        </div>
         <Card>
           <CardHeader>
-            <CardTitle>Lista de Funcionários</CardTitle>
-            <CardDescription>Visualize e gerencie os funcionários cadastrados.</CardDescription>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle>Equipe da Obra</CardTitle>
+                <CardDescription>Funcionários alocados para este projeto.</CardDescription>
+              </div>
+              <DialogTrigger asChild>
+                <Button onClick={handleAddNew}>
+                  <PlusCircle className="mr-2 h-4 w-4" /> Novo Funcionário
+                </Button>
+              </DialogTrigger>
+            </div>
           </CardHeader>
           <CardContent>
             <Table>
@@ -60,7 +66,7 @@ export default function TeamPageContent() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {data.employees.map((employee) => (
+                {projectEmployees.map((employee) => (
                   <TableRow key={employee.id}>
                     <TableCell className="font-medium">{employee.name}</TableCell>
                     <TableCell>{employee.role}</TableCell>
@@ -89,7 +95,6 @@ export default function TeamPageContent() {
             </Table>
           </CardContent>
         </Card>
-      </div>
 
       <DialogContent className="sm:max-w-[625px]">
         <DialogHeader>
@@ -98,7 +103,7 @@ export default function TeamPageContent() {
             {editingEmployee ? 'Atualize os detalhes do funcionário.' : 'Preencha as informações do novo funcionário.'}
           </DialogDescription>
         </DialogHeader>
-        <EmployeeForm employee={editingEmployee} onFinished={() => setOpen(false)} />
+        <EmployeeForm employee={editingEmployee} onFinished={() => setOpen(false)} projectId={projectId} />
       </DialogContent>
     </Dialog>
   );

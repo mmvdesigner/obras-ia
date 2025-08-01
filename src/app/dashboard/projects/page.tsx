@@ -1,16 +1,17 @@
 'use client';
 
 import { useState } from 'react';
-import { PlusCircle, MoreHorizontal } from 'lucide-react';
+import { PlusCircle, MoreHorizontal, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { DataProvider, useData } from '@/hooks/use-data';
+import { useData } from '@/hooks/use-data';
 import type { Project, ProjectStatus } from '@/lib/types';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { ProjectForm } from './_components/project-form';
+import Link from 'next/link';
 
 const statusVariant: Record<ProjectStatus, 'default' | 'secondary' | 'outline' | 'destructive'> = {
   'em andamento': 'default',
@@ -19,7 +20,7 @@ const statusVariant: Record<ProjectStatus, 'default' | 'secondary' | 'outline' |
   'pausada': 'destructive',
 };
 
-function ProjectsPageContent() {
+export default function ProjectsPage() {
   const { data, deleteProject } = useData();
   const [open, setOpen] = useState(false);
   const [editingProject, setEditingProject] = useState<Project | null>(null);
@@ -72,8 +73,12 @@ function ProjectsPageContent() {
               </TableHeader>
               <TableBody>
                 {data.projects.map((project) => (
-                  <TableRow key={project.id}>
-                    <TableCell className="font-medium">{project.name}</TableCell>
+                  <TableRow key={project.id} className="cursor-pointer hover:bg-muted/50">
+                    <TableCell className="font-medium">
+                      <Link href={`/dashboard/projects/${project.id}`} className="hover:underline">
+                        {project.name}
+                      </Link>
+                    </TableCell>
                     <TableCell>{project.client}</TableCell>
                     <TableCell>
                       <Badge variant={statusVariant[project.status]}>{project.status}</Badge>
@@ -89,8 +94,13 @@ function ProjectsPageContent() {
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
                           <DropdownMenuLabel>Ações</DropdownMenuLabel>
-                          <DropdownMenuItem onClick={() => handleEdit(project)}>Editar</DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => deleteProject(project.id)}>Excluir</DropdownMenuItem>
+                          <DropdownMenuItem asChild>
+                             <Link href={`/dashboard/projects/${project.id}`}>
+                               <ArrowRight className="mr-2 h-4 w-4" /> Ver Detalhes
+                             </Link>
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleEdit(project); }}>Editar</DropdownMenuItem>
+                          <DropdownMenuItem onClick={(e) => { e.stopPropagation(); deleteProject(project.id); }}>Excluir</DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </TableCell>
@@ -112,13 +122,5 @@ function ProjectsPageContent() {
         <ProjectForm project={editingProject} onFinished={() => setOpen(false)} />
       </DialogContent>
     </Dialog>
-  );
-}
-
-export default function ProjectsPage() {
-  return (
-    <DataProvider>
-      <ProjectsPageContent />
-    </DataProvider>
   );
 }

@@ -17,7 +17,7 @@ const expenseSchema = z.object({
   amount: z.coerce.number().min(0, 'Valor deve ser positivo'),
   date: z.string().min(1, 'Data é obrigatória'),
   category: z.enum(['material', 'mao de obra', 'equipamentos', 'servicos', 'outros']),
-  projectId: z.string().min(1, 'Selecione um projeto'),
+  projectId: z.string().min(1, 'Obra é obrigatória'),
   receipt: z.string().optional(),
 });
 
@@ -26,6 +26,7 @@ type ExpenseFormValues = z.infer<typeof expenseSchema>;
 interface ExpenseFormProps {
   expense?: Expense | null;
   onFinished: () => void;
+  projectId: string;
 }
 
 const categoryLabels: Record<ExpenseCategory, string> = {
@@ -36,7 +37,7 @@ const categoryLabels: Record<ExpenseCategory, string> = {
   outros: 'Outros',
 };
 
-export function ExpenseForm({ expense, onFinished }: ExpenseFormProps) {
+export function ExpenseForm({ expense, onFinished, projectId }: ExpenseFormProps) {
   const { data, addExpense, updateExpense } = useData();
   const { toast } = useToast();
 
@@ -45,6 +46,7 @@ export function ExpenseForm({ expense, onFinished }: ExpenseFormProps) {
     : {
         date: new Date().toISOString().split('T')[0],
         category: 'material',
+        projectId,
       };
 
   const form = useForm<ExpenseFormValues>({
@@ -66,6 +68,17 @@ export function ExpenseForm({ expense, onFinished }: ExpenseFormProps) {
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+        <FormField
+            control={form.control}
+            name="projectId"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Obra Vinculada</FormLabel>
+                 <Input disabled value={data.projects.find(p => p.id === projectId)?.name} />
+                <FormMessage />
+              </FormItem>
+            )}
+          />
         <FormField
           control={form.control}
           name="description"
@@ -107,56 +120,32 @@ export function ExpenseForm({ expense, onFinished }: ExpenseFormProps) {
             )}
           />
         </div>
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-          <FormField
-            control={form.control}
-            name="projectId"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Obra Vinculada</FormLabel>
-                <Select onValueChange={field.onChange} defaultValue={field.value}>
-                  <FormControl>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione um projeto" />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    {data.projects.map((project) => (
-                      <SelectItem key={project.id} value={project.id}>
-                        {project.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          <FormField
-            control={form.control}
-            name="category"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Categoria</FormLabel>
-                <Select onValueChange={field.onChange} defaultValue={field.value}>
-                  <FormControl>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione uma categoria" />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    {Object.entries(categoryLabels).map(([value, label]) => (
-                      <SelectItem key={value} value={value}>
-                        {label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        </div>
+        
+        <FormField
+          control={form.control}
+          name="category"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Categoria</FormLabel>
+              <Select onValueChange={field.onChange} defaultValue={field.value}>
+                <FormControl>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione uma categoria" />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  {Object.entries(categoryLabels).map(([value, label]) => (
+                    <SelectItem key={value} value={value}>
+                      {label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        
         <FormField
           control={form.control}
           name="receipt"

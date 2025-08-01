@@ -5,9 +5,6 @@ import { usePathname } from 'next/navigation';
 import {
   LayoutDashboard,
   Building2,
-  Users,
-  DollarSign,
-  CalendarClock,
   FileText,
   Settings,
 } from 'lucide-react';
@@ -22,9 +19,6 @@ import type { User } from '@/lib/types';
 const navItems = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/dashboard/projects', label: 'Obras', icon: Building2 },
-  { href: '/dashboard/team', label: 'Equipe', icon: Users },
-  { href: '/dashboard/finance', label: 'Financeiro', icon: DollarSign },
-  { href: '/dashboard/schedule', label: 'Cronograma', icon: CalendarClock },
   { href: '/dashboard/reports', label: 'Relatórios', icon: FileText },
   { href: '/dashboard/settings', label: 'Configurações', icon: Settings, requiredRole: 'Administrator' },
 ];
@@ -39,7 +33,7 @@ export function MainNav({ user }: { user: User | null }) {
           return null;
         }
 
-        const isActive = pathname === item.href;
+        const isActive = pathname.startsWith(item.href);
         return (
           <SidebarMenuItem key={item.href}>
             <Link href={item.href}>

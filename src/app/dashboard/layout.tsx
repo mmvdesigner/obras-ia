@@ -15,6 +15,7 @@ import {
 } from '@/components/ui/sidebar';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
+import { DataProvider } from '@/hooks/use-data';
 
 function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
@@ -31,6 +32,7 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
   }
   
   return (
+    <DataProvider>
     <SidebarProvider>
       <Sidebar>
         <SidebarHeader className="p-4">
@@ -58,6 +60,7 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
         <main className="flex-1 p-4 sm:p-6">{children}</main>
       </SidebarInset>
     </SidebarProvider>
+    </DataProvider>
   );
 }
 

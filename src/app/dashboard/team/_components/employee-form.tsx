@@ -18,7 +18,8 @@ const employeeSchema = z.object({
   email: z.string().email('Email inválido'),
   salary: z.coerce.number().min(0, 'Salário deve ser positivo'),
   status: z.enum(['ativo', 'inativo']),
-  linkedProjectIds: z.array(z.string()).min(1, 'Selecione ao menos um projeto'),
+  // We keep this as an array to not break the data structure, but will only manage one link here
+  linkedProjectIds: z.array(z.string()),
 });
 
 type EmployeeFormValues = z.infer<typeof employeeSchema>;
@@ -26,15 +27,16 @@ type EmployeeFormValues = z.infer<typeof employeeSchema>;
 interface EmployeeFormProps {
   employee?: Employee | null;
   onFinished: () => void;
+  projectId: string;
 }
 
-export function EmployeeForm({ employee, onFinished }: EmployeeFormProps) {
+export function EmployeeForm({ employee, onFinished, projectId }: EmployeeFormProps) {
   const { data, addEmployee, updateEmployee } = useData();
   const { toast } = useToast();
 
   const defaultValues: Partial<EmployeeFormValues> = employee
     ? { ...employee }
-    : { status: 'ativo', linkedProjectIds: [] };
+    : { status: 'ativo', linkedProjectIds: [projectId] };
 
   const form = useForm<EmployeeFormValues>({
     resolver: zodResolver(employeeSchema),
@@ -42,11 +44,18 @@ export function EmployeeForm({ employee, onFinished }: EmployeeFormProps) {
   });
 
   const onSubmit = (formData: EmployeeFormValues) => {
+    // Ensure the current project ID is part of the linked projects
+    const updatedLinkedIds = employee
+      ? [...new Set([...(employee.linkedProjectIds || []), projectId])]
+      : [projectId];
+
+    const finalData = { ...formData, linkedProjectIds: updatedLinkedIds };
+
     if (employee) {
-      updateEmployee({ ...employee, ...formData });
+      updateEmployee({ ...employee, ...finalData });
       toast({ title: 'Funcionário atualizado!', description: 'Os dados foram salvos.' });
     } else {
-      addEmployee(formData);
+      addEmployee(finalData);
       toast({ title: 'Funcionário adicionado!', description: 'O novo funcionário foi salvo.' });
     }
     onFinished();
@@ -150,19 +159,8 @@ export function EmployeeForm({ employee, onFinished }: EmployeeFormProps) {
             name="linkedProjectIds"
             render={({ field }) => (
                 <FormItem>
-                <FormLabel>Obra(s) Vinculada(s)</FormLabel>
-                    <Select onValueChange={(value) => field.onChange([value])} defaultValue={field.value?.[0]}>
-                    <FormControl>
-                        <SelectTrigger>
-                        <SelectValue placeholder="Selecione um projeto" />
-                        </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                        {data.projects.map(project => (
-                        <SelectItem key={project.id} value={project.id}>{project.name}</SelectItem>
-                        ))}
-                    </SelectContent>
-                    </Select>
+                <FormLabel>Obra Vinculada</FormLabel>
+                <Input disabled value={data.projects.find(p => p.id === projectId)?.name} />
                 <FormMessage />
                 </FormItem>
             )}
