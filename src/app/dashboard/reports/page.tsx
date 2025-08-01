@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button';
 import { summarizeProjectExpenses, SummarizeProjectExpensesInput } from '@/ai/flows/summarize-project-expenses';
 import { useReactToPrint } from 'react-to-print';
 import { Badge } from '@/components/ui/badge';
+import { DataProvider } from '@/hooks/use-data';
 
 function ReportsPage() {
   const { data } = useData();
@@ -38,13 +39,13 @@ function ReportsPage() {
     const projectParameters = `
         Nome do Projeto: ${project.name}
         Orçamento Total: ${project.totalBudget.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-        Data de Início: ${project.startDate}
-        Data de Fim: ${project.endDate}
+        Data de Início: ${new Date(project.startDate).toLocaleDateString('pt-BR')}
+        Data de Fim: ${new Date(project.endDate).toLocaleDateString('pt-BR')}
         Descrição: ${project.description}
     `;
 
     const expenseReports = expenses.map(e => 
-        `Categoria: ${e.category}, Descrição: ${e.description}, Valor: ${e.amount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}`
+        `Categoria: ${e.category}, Descrição: ${e.description}, Valor: ${e.amount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}, Status: ${e.status}`
     ).join('\n');
     
     try {
@@ -78,6 +79,7 @@ function ReportsPage() {
   const formatCurrency = (value: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
   const formatDate = (dateString: string) => new Date(dateString).toLocaleDateString('pt-BR', { timeZone: 'UTC' });
   const totalSpent = useMemo(() => expenses.reduce((sum, e) => sum + e.amount, 0), [expenses]);
+  const totalPaid = useMemo(() => expenses.filter(e => e.status === 'pago').reduce((sum, e) => sum + e.amount, 0), [expenses]);
   const totalPending = useMemo(() => pendingExpenses.reduce((sum, e) => sum + e.amount, 0), [pendingExpenses]);
   const tasksCompleted = useMemo(() => tasks.filter(t => t.status === 'concluída').length, [tasks]);
 
@@ -159,7 +161,7 @@ function ReportsPage() {
                                 </TableRow>
                                 <TableRow>
                                     <TableCell>Total Gasto (Pago)</TableCell>
-                                    <TableCell className="text-right font-bold">{formatCurrency(totalSpent - totalPending)}</TableCell>
+                                    <TableCell className="text-right font-bold">{formatCurrency(totalPaid)}</TableCell>
                                 </TableRow>
                                 <TableRow className="text-destructive">
                                     <TableCell>Total a Pagar</TableCell>
@@ -167,7 +169,11 @@ function ReportsPage() {
                                 </TableRow>
                                 <TableRow>
                                     <TableCell>Orçamento Restante</TableCell>
-                                    <TableCell className="text-right font-bold">{formatCurrency(project.totalBudget - (totalSpent - totalPending))}</TableCell>
+                                    <TableCell className="text-right font-bold">{formatCurrency(project.totalBudget - totalPaid)}</TableCell>
+                                </TableRow>
+                                <TableRow>
+                                    <TableCell>Valor Total dos Gastos</TableCell>
+                                    <TableCell className="text-right font-bold">{formatCurrency(totalSpent)}</TableCell>
                                 </TableRow>
                             </TableBody>
                         </Table>
@@ -298,6 +304,8 @@ function ReportsPage() {
 
 export default function ReportsPageWrapper() {
   return (
+    <DataProvider>
       <ReportsPage />
+    </DataProvider>
   );
 }

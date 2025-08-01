@@ -15,6 +15,7 @@ import {
   SidebarMenuButton,
 } from '@/components/ui/sidebar';
 import type { User } from '@/lib/types';
+import { useAuth } from '@/hooks/use-auth';
 
 const navItems = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -23,8 +24,11 @@ const navItems = [
   { href: '/dashboard/settings', label: 'Configurações', icon: Settings, requiredRole: 'Administrator' },
 ];
 
-export function MainNav({ user }: { user: User | null }) {
+export function MainNav({ user: propUser }: { user: User | null }) {
   const pathname = usePathname();
+  const { user: authUser } = useAuth();
+  
+  const user = propUser || authUser;
 
   return (
     <SidebarMenu>
