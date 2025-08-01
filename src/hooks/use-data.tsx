@@ -31,14 +31,19 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const [data, setData] = useLocalStorage<AppData>('buildwise-data', initialData);
 
   useEffect(() => {
-    // Ensure inventory is never undefined
-    if (!data.inventory) {
-      setData(prevData => ({ ...prevData, inventory: [] }));
-    }
-  }, [data.inventory, setData]);
+    // Ensure inventory and files array are never undefined
+    setData(prevData => {
+        const newData = {...prevData};
+        if (!newData.inventory) {
+            newData.inventory = [];
+        }
+        newData.projects = newData.projects.map(p => ({...p, files: p.files || [] }));
+        return newData;
+    });
+  }, [setData]);
 
   const addProject = (project: Omit<Project, 'id'>) => {
-    const newProject = { ...project, id: generateId() };
+    const newProject = { ...project, id: generateId(), files: project.files || [] };
     setData(prevData => ({ ...prevData, projects: [...prevData.projects, newProject] }));
   };
 
