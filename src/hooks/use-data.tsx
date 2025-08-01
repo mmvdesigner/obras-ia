@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, ReactNode, useEffect } from 'react';
+import React, { createContext, useContext, ReactNode } from 'react';
 import { useLocalStorage } from './use-local-storage';
 import { initialData } from '@/lib/data';
 import type { AppData, Project, Employee, Expense, Task, InventoryItem } from '@/lib/types';
@@ -29,18 +29,6 @@ const generateId = () => new Date().getTime().toString();
 
 export function DataProvider({ children }: { children: ReactNode }) {
   const [data, setData] = useLocalStorage<AppData>('buildwise-data', initialData);
-
-  useEffect(() => {
-    // Ensure inventory and files array are never undefined
-    setData(prevData => {
-        const newData = {...prevData};
-        if (!newData.inventory) {
-            newData.inventory = [];
-        }
-        newData.projects = newData.projects.map(p => ({...p, files: p.files || [] }));
-        return newData;
-    });
-  }, [setData]);
 
   const addProject = (project: Omit<Project, 'id'>) => {
     const newProject = { ...project, id: generateId(), files: project.files || [] };
