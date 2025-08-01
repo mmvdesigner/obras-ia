@@ -1,7 +1,7 @@
 'use client';
 import {useRouter} from 'next/navigation';
 import {useData} from '@/hooks/use-data';
-import {ArrowLeft, Building2, CalendarClock, DollarSign, Users} from 'lucide-react';
+import {ArrowLeft, Building2, CalendarClock, DollarSign, Users, Package} from 'lucide-react';
 
 import {Button} from '@/components/ui/button';
 import {Card, CardContent, CardDescription, CardHeader, CardTitle} from '@/components/ui/card';
@@ -11,6 +11,7 @@ import Link from 'next/link';
 import TeamPageContent from '../../team/_components/team-page-content';
 import FinancePageContent from '../../finance/page';
 import SchedulePageContent from '../../schedule/page';
+import InventoryPageContent from '../../inventory/page';
 
 export default function ProjectDetailsPage({params}: {params: {id: string}}) {
   const router = useRouter();
@@ -46,7 +47,7 @@ export default function ProjectDetailsPage({params}: {params: {id: string}}) {
       </div>
 
       <Tabs defaultValue="overview" className="w-full">
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="overview">
             <Building2 className="mr-2 h-4 w-4" /> Visão Geral
           </TabsTrigger>
@@ -55,6 +56,9 @@ export default function ProjectDetailsPage({params}: {params: {id: string}}) {
           </TabsTrigger>
           <TabsTrigger value="finance">
             <DollarSign className="mr-2 h-4 w-4" /> Financeiro
+          </TabsTrigger>
+          <TabsTrigger value="inventory">
+            <Package className="mr-2 h-4 w-4" /> Estoque
           </TabsTrigger>
           <TabsTrigger value="team">
             <Users className="mr-2 h-4 w-4" /> Equipe
@@ -101,6 +105,9 @@ export default function ProjectDetailsPage({params}: {params: {id: string}}) {
         </TabsContent>
         <TabsContent value="finance">
           <FinancePageContent projectId={project.id} />
+        </TabsContent>
+        <TabsContent value="inventory">
+          <InventoryPageContent projectId={project.id} />
         </TabsContent>
         <TabsContent value="team">
           <TeamPageContent projectId={project.id} />

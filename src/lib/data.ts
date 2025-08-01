@@ -79,13 +79,16 @@ export const initialData: AppData = {
     {
       id: 'exp-1',
       date: '2024-06-10',
-      description: 'Cimento e areia',
+      description: 'Compra de cimento e areia',
       amount: 15000,
       category: 'material',
       projectId: 'proj-1',
       receipt: 'nota-fiscal-123.pdf',
       supplier: 'Casa do Construtor',
-      status: 'pago'
+      status: 'pago',
+      materialName: 'Cimento',
+      quantity: 300,
+      unitPrice: 50
     },
     {
       id: 'exp-2',
@@ -142,4 +145,22 @@ export const initialData: AppData = {
         projectId: 'proj-2',
     }
   ],
+  inventory: [
+      {
+          id: 'inv-1',
+          projectId: 'proj-1',
+          name: 'Cimento',
+          quantity: 300,
+          unit: 'saco',
+          averagePrice: 50
+      },
+      {
+          id: 'inv-2',
+          projectId: 'proj-1',
+          name: 'Areia',
+          quantity: 20,
+          unit: 'm³',
+          averagePrice: 100
+      }
+  ]
 };

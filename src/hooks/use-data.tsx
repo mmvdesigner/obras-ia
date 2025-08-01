@@ -3,7 +3,7 @@
 import React, { createContext, useContext, ReactNode } from 'react';
 import { useLocalStorage } from './use-local-storage';
 import { initialData } from '@/lib/data';
-import type { AppData, Project, Employee, Expense, Task } from '@/lib/types';
+import type { AppData, Project, Employee, Expense, Task, InventoryItem } from '@/lib/types';
 
 interface DataContextType {
   data: AppData;
@@ -20,6 +20,7 @@ interface DataContextType {
   addTask: (task: Omit<Task, 'id'>) => void;
   updateTask: (task: Task) => void;
   deleteTask: (taskId: string) => void;
+  addInventoryItem: (item: Omit<InventoryItem, 'id'>) => void;
 }
 
 const DataContext = createContext<DataContextType | undefined>(undefined);
@@ -63,17 +64,49 @@ export function DataProvider({ children }: { children: ReactNode }) {
   
   const addExpense = (expense: Omit<Expense, 'id'>) => {
     const newExpense = { ...expense, id: generateId() };
-    setData(prevData => ({ ...prevData, expenses: [...prevData.expenses, newExpense] }));
+    setData(prevData => {
+        let newInventory = [...prevData.inventory];
+        if (expense.category === 'material' && expense.materialName && expense.quantity && expense.unitPrice) {
+            const itemIndex = newInventory.findIndex(i => i.projectId === expense.projectId && i.name.toLowerCase() === expense.materialName!.toLowerCase());
+            
+            if (itemIndex > -1) {
+                // Update existing item
+                const existingItem = newInventory[itemIndex];
+                const totalQuantity = existingItem.quantity + expense.quantity;
+                const newAveragePrice = ((existingItem.quantity * existingItem.averagePrice) + (expense.quantity * expense.unitPrice)) / totalQuantity;
+                
+                newInventory[itemIndex] = {
+                    ...existingItem,
+                    quantity: totalQuantity,
+                    averagePrice: newAveragePrice,
+                };
+            } else {
+                // Add new item
+                newInventory.push({
+                    id: generateId(),
+                    projectId: expense.projectId,
+                    name: expense.materialName,
+                    quantity: expense.quantity,
+                    unit: 'unidade', // default unit, maybe this should be in the form
+                    averagePrice: expense.unitPrice,
+                });
+            }
+        }
+        return { ...prevData, expenses: [...prevData.expenses, newExpense], inventory: newInventory };
+    });
   };
   
   const updateExpense = (updatedExpense: Expense) => {
     setData(prevData => ({
       ...prevData,
+      // Note: Updating inventory based on an updated expense is complex and not implemented here.
+      // It would require knowing the original state of the expense.
       expenses: prevData.expenses.map(e => (e.id === updatedExpense.id ? updatedExpense : e)),
     }));
   };
   
   const deleteExpense = (expenseId: string) => {
+     // Note: Deleting inventory based on a deleted expense is complex and not implemented here.
     setData(prevData => ({ ...prevData, expenses: prevData.expenses.filter(e => e.id !== expenseId) }));
   };
   
@@ -93,8 +126,13 @@ export function DataProvider({ children }: { children: ReactNode }) {
     setData(prevData => ({ ...prevData, tasks: prevData.tasks.filter(t => t.id !== taskId) }));
   };
 
+  const addInventoryItem = (item: Omit<InventoryItem, 'id'>) => {
+    const newItem = { ...item, id: generateId() };
+    setData(prevData => ({...prevData, inventory: [...prevData.inventory, newItem]}));
+  };
+
   return (
-    <DataContext.Provider value={{ data, setData, addProject, updateProject, deleteProject, addEmployee, updateEmployee, deleteEmployee, addExpense, updateExpense, deleteExpense, addTask, updateTask, deleteTask }}>
+    <DataContext.Provider value={{ data, setData, addProject, updateProject, deleteProject, addEmployee, updateEmployee, deleteEmployee, addExpense, updateExpense, deleteExpense, addTask, updateTask, deleteTask, addInventoryItem }}>
       {children}
     </DataContext.Provider>
   );

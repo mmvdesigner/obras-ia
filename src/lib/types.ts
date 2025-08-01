@@ -47,6 +47,10 @@ export interface Expense {
   receipt: string;
   supplier: string;
   status: ExpenseStatus;
+  // inventory-related fields
+  materialName?: string;
+  quantity?: number;
+  unitPrice?: number;
 }
 
 export type TaskStatus = 'nao iniciada' | 'em andamento' | 'concluída';
@@ -62,10 +66,20 @@ export interface Task {
   projectId: string;
 }
 
+export interface InventoryItem {
+    id: string;
+    projectId: string;
+    name: string;
+    quantity: number;
+    unit: string; // e.g., 'saco', 'm³', 'unidade'
+    averagePrice: number;
+}
+
 export interface AppData {
   users: User[];
   projects: Project[];
   employees: Employee[];
   expenses: Expense[];
   tasks: Task[];
+  inventory: InventoryItem[];
 }
