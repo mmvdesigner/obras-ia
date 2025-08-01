@@ -1,5 +1,6 @@
 'use client';
-import {useRouter} from 'next/navigation';
+import {useRouter, useParams} from 'next/navigation';
+import React from 'react';
 import {useData} from '@/hooks/use-data';
 import {ArrowLeft, Building2, CalendarClock, DollarSign, Users, Package} from 'lucide-react';
 
@@ -13,10 +14,12 @@ import FinancePageContent from '../../finance/page';
 import SchedulePageContent from '../../schedule/page';
 import InventoryPageContent from '../../inventory/page';
 
-export default function ProjectDetailsPage({params}: {params: {id: string}}) {
+export default function ProjectDetailsPage() {
   const router = useRouter();
+  const params = React.use(useParams());
   const {data} = useData();
-  const project = data.projects.find((p) => p.id === params.id);
+  const projectId = Array.isArray(params.id) ? params.id[0] : params.id;
+  const project = data.projects.find((p) => p.id === projectId);
 
   if (!project) {
     return (
