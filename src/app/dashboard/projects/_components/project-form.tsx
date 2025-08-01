@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import type { Project } from '@/lib/types';
 import { useData } from '@/hooks/use-data';
 import { useToast } from '@/hooks/use-toast';
-import { useState } from 'react';
+import { useRef } from 'react';
 import { FileText, Trash2, Upload } from 'lucide-react';
 
 const projectSchema = z.object({
@@ -36,7 +36,7 @@ interface ProjectFormProps {
 export function ProjectForm({ project, onFinished }: ProjectFormProps) {
   const { addProject, updateProject } = useData();
   const { toast } = useToast();
-  const [fileName, setFileName] = useState('');
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const defaultValues: Partial<ProjectFormValues> = project
     ? {
@@ -71,10 +71,14 @@ export function ProjectForm({ project, onFinished }: ProjectFormProps) {
     onFinished();
   };
   
-  const handleAddFile = () => {
-    if (fileName.trim()) {
-        append(fileName.trim());
-        setFileName('');
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      append(file.name);
+    }
+    // Reset file input to allow selecting the same file again
+    if(event.target) {
+        event.target.value = '';
     }
   };
 
@@ -207,21 +211,15 @@ export function ProjectForm({ project, onFinished }: ProjectFormProps) {
         
         <FormItem>
           <FormLabel>Documentos da Obra</FormLabel>
-          <div className="flex gap-2">
-            <Input 
-                type="text" 
-                placeholder="Nome do arquivo (ex: planta.pdf)" 
-                value={fileName}
-                onChange={(e) => setFileName(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    e.preventDefault();
-                    handleAddFile();
-                  }
-                }}
+          <div>
+            <input 
+              type="file" 
+              ref={fileInputRef} 
+              onChange={handleFileChange}
+              className="hidden" 
             />
-            <Button type="button" onClick={handleAddFile} variant="outline">
-                <Upload className="mr-2 h-4 w-4" /> Adicionar
+            <Button type="button" variant="outline" onClick={() => fileInputRef.current?.click()}>
+                <Upload className="mr-2 h-4 w-4" /> Carregar Arquivo
             </Button>
           </div>
             <div className="space-y-2 mt-2">
@@ -229,7 +227,7 @@ export function ProjectForm({ project, onFinished }: ProjectFormProps) {
                 <div key={field.id} className="flex items-center justify-between rounded-md border p-2">
                     <div className="flex items-center gap-2">
                         <FileText className="h-4 w-4 text-muted-foreground" />
-                        <span className="text-sm">{(field as any).value}</span>
+                        <span className="text-sm">{field.value}</span>
                     </div>
                     <Button type="button" variant="ghost" size="icon" onClick={() => handleRemoveFile(index)}>
                         <Trash2 className="h-4 w-4 text-destructive" />
