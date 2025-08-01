@@ -229,7 +229,7 @@ export function ProjectForm({ project, onFinished }: ProjectFormProps) {
                 <div key={field.id} className="flex items-center justify-between rounded-md border p-2">
                     <div className="flex items-center gap-2">
                         <FileText className="h-4 w-4 text-muted-foreground" />
-                        <span className="text-sm">{(field as any).value}</span>
+                        <span className="text-sm">{form.getValues("files")?.[index]}</span>
                     </div>
                     <Button type="button" variant="ghost" size="icon" onClick={() => handleRemoveFile(index)}>
                         <Trash2 className="h-4 w-4 text-destructive" />
