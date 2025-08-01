@@ -11,6 +11,7 @@ import type { Task, TaskStatus } from '@/lib/types';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { TaskForm } from './_components/task-form';
 import { format } from 'date-fns';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 
 const statusVariant: Record<TaskStatus, 'default' | 'secondary' | 'outline'> = {
   'em andamento': 'default',
