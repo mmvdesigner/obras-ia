@@ -16,7 +16,7 @@ import InventoryPageContent from '../../inventory/page';
 
 export default function ProjectDetailsPage() {
   const router = useRouter();
-  const params = React.use(useParams());
+  const params = useParams();
   const {data} = useData();
   const projectId = Array.isArray(params.id) ? params.id[0] : params.id;
   const project = data.projects.find((p) => p.id === projectId);
