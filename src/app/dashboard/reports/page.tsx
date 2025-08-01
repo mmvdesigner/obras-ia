@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button';
 import { summarizeProjectExpenses, SummarizeProjectExpensesInput } from '@/ai/flows/summarize-project-expenses';
 import { useReactToPrint } from 'react-to-print';
 import { Badge } from '@/components/ui/badge';
+import { DataProvider } from '@/hooks/use-data';
 
 function ReportsPage() {
   const { data } = useData();
@@ -303,6 +304,8 @@ function ReportsPage() {
 
 export default function ReportsPageWrapper() {
   return (
+    <DataProvider>
       <ReportsPage />
+    </DataProvider>
   );
 }
