@@ -27,7 +27,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(JSON.parse(storedUser));
     }
     setLoading(false);
-  }, [setUser]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
 
   const login = (role: UserRole) => {
