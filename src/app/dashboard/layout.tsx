@@ -1,6 +1,6 @@
 'use client';
 
-import { Building } from 'lucide-react';
+import { LiderLogo } from '@/components/logo';
 import { AuthProvider } from '@/hooks/use-auth';
 import { MainNav } from '@/components/dashboard/main-nav';
 import { UserNav } from '@/components/dashboard/user-nav';
@@ -17,6 +17,7 @@ import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 import { useAuth } from '@/hooks/use-auth';
 import { DataProvider } from '@/hooks/use-data';
+import Link from 'next/link';
 
 function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
@@ -29,19 +30,17 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
   }, [user, loading, router]);
 
   if (loading || !user) {
-    return <div className="flex h-screen w-screen items-center justify-center">Loading...</div>;
+    return <div className="flex h-screen w-screen items-center justify-center">Carregando...</div>;
   }
   
   return (
       <SidebarProvider>
         <Sidebar>
           <SidebarHeader className="p-4">
-            <div className="flex items-center gap-2">
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-                <Building className="h-6 w-6" />
-              </div>
-              <span className="text-xl font-semibold">BuildWise</span>
-            </div>
+            <Link href="/dashboard" className="flex items-center gap-2">
+                <LiderLogo className="w-10 h-auto" />
+                <span className="text-xl font-semibold text-primary">LIDER</span>
+            </Link>
           </SidebarHeader>
           <SidebarContent>
             <MainNav user={user} />

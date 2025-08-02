@@ -11,6 +11,20 @@ import { Button } from '@/components/ui/button';
 import { summarizeProjectExpenses, SummarizeProjectExpensesInput } from '@/ai/flows/summarize-project-expenses';
 import { useReactToPrint } from 'react-to-print';
 import { Badge } from '@/components/ui/badge';
+import { LiderLogo } from '@/components/logo';
+
+function ReportHeader({ project }: { project: any }) {
+    if (!project) return null;
+    return (
+        <div className="flex justify-between items-center mb-6">
+            <div>
+                <CardTitle>Relatório Geral: {project.name}</CardTitle>
+                <CardDescription>Emitido em: {new Date().toLocaleDateString('pt-BR')}</CardDescription>
+            </div>
+            <LiderLogo className="w-24 h-auto" />
+        </div>
+    )
+}
 
 function ReportContent({ projectId }: { projectId: string }) {
     const { data } = useData();
@@ -79,10 +93,9 @@ function ReportContent({ projectId }: { projectId: string }) {
 
     return (
         <div className="space-y-6 p-4 print:p-0">
-            <Card>
+            <Card className="print:shadow-none print:border-none">
                 <CardHeader>
-                    <CardTitle>Relatório Geral: {project.name}</CardTitle>
-                    <CardDescription>Emitido em: {new Date().toLocaleDateString('pt-BR')}</CardDescription>
+                    <ReportHeader project={project} />
                 </CardHeader>
                 <CardContent>
                     <Table>
@@ -108,8 +121,8 @@ function ReportContent({ projectId }: { projectId: string }) {
                 </CardContent>
             </Card>
             
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <Card>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 print:grid-cols-2">
+                <Card className="print:shadow-none print:border">
                     <CardHeader>
                         <CardTitle>Resumo Financeiro</CardTitle>
                     </CardHeader>
@@ -140,7 +153,7 @@ function ReportContent({ projectId }: { projectId: string }) {
                         </Table>
                     </CardContent>
                 </Card>
-                <Card>
+                <Card className="print:shadow-none print:border">
                     <CardHeader>
                         <CardTitle>Resumo do Cronograma</CardTitle>
                     </CardHeader>
@@ -165,7 +178,7 @@ function ReportContent({ projectId }: { projectId: string }) {
                 </Card>
             </div>
             
-            <Card>
+            <Card className="print:shadow-none print:border">
                 <CardHeader>
                 <CardTitle>Gastos por Categoria</CardTitle>
                 </CardHeader>
@@ -183,7 +196,7 @@ function ReportContent({ projectId }: { projectId: string }) {
                 </CardContent>
             </Card>
             
-            <Card>
+            <Card className="print:shadow-none print:border break-inside-avoid">
                     <CardHeader>
                         <CardTitle className="flex items-center gap-2"><AlertCircle className="text-destructive"/> Contas a Pagar</CardTitle>
                         <CardDescription>Despesas registradas que ainda não foram quitadas.</CardDescription>
@@ -216,9 +229,9 @@ function ReportContent({ projectId }: { projectId: string }) {
                             </TableBody>
                         </Table>
                     </CardContent>
-                </Card>
+            </Card>
 
-            <Card>
+            <Card className="print:shadow-none print:border-none print:bg-transparent">
                 <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                     <Bot /> Análise da IA
@@ -227,7 +240,7 @@ function ReportContent({ projectId }: { projectId: string }) {
                     Resumo inteligente dos gastos e identificação de oportunidades de economia.
                 </CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-4">
+                <CardContent className="space-y-4 print:hidden">
                 <Button onClick={handleGenerateSummary} disabled={!projectId || isLoading} className="w-full sm:w-auto">
                     {isLoading ? (
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -268,6 +281,15 @@ function ReportsPage() {
   const handlePrint = useReactToPrint({
     content: () => reportRef.current,
     documentTitle: `Relatorio-${project?.name.replace(/\s/g, '_') || 'obra'}`,
+    pageStyle: `
+        @media print {
+            body { -webkit-print-color-adjust: exact; }
+            @page {
+                size: A4;
+                margin: 20mm;
+            }
+        }
+    `
   });
 
   return (

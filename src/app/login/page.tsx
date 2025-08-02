@@ -1,11 +1,11 @@
 'use client';
 
-import { Building, Wrench, Fingerprint } from 'lucide-react';
+import { Wrench, Fingerprint } from 'lucide-react';
 import { AuthProvider, useAuth } from '@/hooks/use-auth';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { DataProvider } from '@/hooks/use-data';
-import { Separator } from '@/components/ui/separator';
+import { LiderLogo } from '@/components/logo';
 
 function LoginPageContent() {
   const { login } = useAuth();
@@ -15,10 +15,10 @@ function LoginPageContent() {
       <div className="absolute inset-0 bg-gradient-to-br from-primary/20 via-transparent to-transparent -z-10"/>
       <Card className="w-full max-w-sm shadow-2xl rounded-2xl border-2 border-border/20 backdrop-blur-sm bg-background/80">
         <CardHeader className="text-center p-8">
-          <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg">
-            <Building className="h-10 w-10" />
+          <div className="mx-auto mb-4 flex items-center justify-center">
+            <LiderLogo className="h-28 w-auto" />
           </div>
-          <CardTitle className="text-4xl font-bold tracking-tighter">BuildWise</CardTitle>
+          <CardTitle className="text-4xl font-bold tracking-tighter text-primary">LIDER</CardTitle>
           <CardDescription className="text-lg text-muted-foreground pt-1">
             Selecione seu perfil para acessar o sistema.
           </CardDescription>
