@@ -4,6 +4,7 @@ import { Building, Wrench } from 'lucide-react';
 import { AuthProvider, useAuth } from '@/hooks/use-auth';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { DataProvider } from '@/hooks/use-data';
 
 function LoginPageContent() {
   const { login } = useAuth();
@@ -45,7 +46,9 @@ function LoginPageContent() {
 export default function LoginPage() {
   return (
     <AuthProvider>
-      <LoginPageContent />
+      <DataProvider>
+        <LoginPageContent />
+      </DataProvider>
     </AuthProvider>
   );
 }

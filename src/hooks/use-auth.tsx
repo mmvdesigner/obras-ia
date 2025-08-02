@@ -4,8 +4,7 @@ import React, { createContext, useContext, useState, useEffect, ReactNode, useCa
 import { useRouter } from 'next/navigation';
 import { useLocalStorage } from './use-local-storage';
 import type { User, UserRole, AppData } from '@/lib/types';
-import { useData } from './use-data';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, collection, getDocs, query, where } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 
 interface AuthContextType {
@@ -22,7 +21,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useLocalStorage<User | null>('currentUser', null);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
-  const dataContext = useData();
 
   useEffect(() => {
     // on initial load, check local storage
@@ -37,24 +35,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = async (role: UserRole) => {
       setLoading(true);
-      if (dataContext.data.users.length > 0) {
-        const userToLogin = dataContext.data.users.find(u => u.role === role);
-        if (userToLogin) {
-            setUser(userToLogin);
-            router.push('/dashboard');
-        } else {
-            console.error("Could not find user for role:", role);
-        }
+      
+      const usersRef = collection(db, "users");
+      const q = query(usersRef, where("role", "==", role));
+      const querySnapshot = await getDocs(q);
+
+      if (!querySnapshot.empty) {
+          const userDoc = querySnapshot.docs[0];
+          const userToLogin = {id: userDoc.id, ...userDoc.data()} as User;
+          setUser(userToLogin);
+          router.push('/dashboard');
       } else {
-          // Fallback if data isn't loaded yet
-          const userId = role === 'Administrator' ? '1' : '2';
-          const userDoc = await getDoc(doc(db, "users", userId));
-          if (userDoc.exists()) {
-              const userToLogin = {id: userDoc.id, ...userDoc.data()} as User;
-              setUser(userToLogin);
-              router.push('/dashboard');
-          }
+         console.error("Could not find user for role:", role);
       }
+      
       setLoading(false);
   };
 
@@ -66,8 +60,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const updateUser = useCallback(async (updatedUser: User) => {
       setUser(updatedUser);
       // The update will be handled by the onSnapshot listener in useData
-      // but we can trigger a direct update for immediate feedback if needed.
-      // For now, we rely on the real-time listener.
   }, [setUser]);
 
   return (
@@ -77,16 +69,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 }
 
-// This wrapper now only provides the DataProvider
-function AuthProviderWrapper({ children }: { children: ReactNode }) {
-    return (
-        <DataProvider>
-            <AuthProvider>{children}</AuthProvider>
-        </DataProvider>
-    )
-}
-
-
 export function useAuth() {
   const context = useContext(AuthContext);
   if (context === undefined) {
@@ -94,6 +76,3 @@ export function useAuth() {
   }
   return context;
 }
-
-// Exporting the wrapper as the main provider for layout files
-export { AuthProviderWrapper as AuthProvider };

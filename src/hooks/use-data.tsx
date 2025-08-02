@@ -27,12 +27,10 @@ interface DataContextType {
 
 const DataContext = createContext<DataContextType | undefined>(undefined);
 
-const generateId = () => new Date().getTime().toString();
-
 export function DataProvider({ children }: { children: ReactNode }) {
   const [data, setData] = useState<AppData>(initialData);
   const [loading, setLoading] = useState(true);
-  const { user } = useAuth() as any; // Use 'any' to avoid circular dependency issues
+  const { user } = useAuth();
 
   const seedDatabase = useCallback(async () => {
     console.log("Checking if database needs seeding...");
@@ -75,8 +73,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
-    if (user) { // Only fetch data if a user is logged in
-        seedDatabase(); // Check if we need to seed the database
+    if (user) { 
+        seedDatabase(); 
         
         const collections: (keyof AppData)[] = ['users', 'projects', 'employees', 'expenses', 'tasks', 'inventory'];
         const unsubscribes = collections.map(collectionName => {
@@ -93,7 +91,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
         return () => unsubscribes.forEach(unsub => unsub());
     } else {
         setLoading(false);
-        setData(initialData); // Reset to initial local data if logged out
+        setData(initialData);
     }
   }, [user, seedDatabase]);
 
@@ -125,7 +123,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
   };
   
   const addExpense = async (expense: Omit<Expense, 'id'>) => {
-      const docRef = await addDoc(collection(db, 'expenses'), expense);
+      await addDoc(collection(db, 'expenses'), expense);
       
       // Update inventory
       if (expense.category === 'material' && expense.materialName && expense.quantity && expense.unitPrice) {

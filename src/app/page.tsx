@@ -4,6 +4,7 @@ import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { AuthProvider, useAuth } from '@/hooks/use-auth';
 import { Skeleton } from '@/components/ui/skeleton';
+import { DataProvider } from '@/hooks/use-data';
 
 function HomePageContent() {
   const { user, loading } = useAuth();
@@ -35,7 +36,9 @@ function HomePageContent() {
 export default function HomePage() {
   return (
     <AuthProvider>
-      <HomePageContent />
+        <DataProvider>
+            <HomePageContent />
+        </DataProvider>
     </AuthProvider>
   );
 }

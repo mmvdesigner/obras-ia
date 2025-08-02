@@ -1,7 +1,7 @@
 'use client';
 
 import { Building } from 'lucide-react';
-import { AuthProvider, useAuth } from '@/hooks/use-auth';
+import { AuthProvider } from '@/hooks/use-auth';
 import { MainNav } from '@/components/dashboard/main-nav';
 import { UserNav } from '@/components/dashboard/user-nav';
 import {
@@ -15,6 +15,8 @@ import {
 } from '@/components/ui/sidebar';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
+import { useAuth } from '@/hooks/use-auth';
+import { DataProvider } from '@/hooks/use-data';
 
 function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
@@ -64,7 +66,9 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   return (
     <AuthProvider>
-      <DashboardLayoutContent>{children}</DashboardLayoutContent>
+        <DataProvider>
+            <DashboardLayoutContent>{children}</DashboardLayoutContent>
+        </DataProvider>
     </AuthProvider>
   );
 }
