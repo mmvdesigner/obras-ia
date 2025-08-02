@@ -2,10 +2,10 @@
 
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { AuthProvider, useAuth } from '@/hooks/use-auth';
+import { useAuth } from '@/hooks/use-auth';
 import { Skeleton } from '@/components/ui/skeleton';
 
-function HomePageContent() {
+export default function HomePage() {
   const { user, loading } = useAuth();
   const router = useRouter();
 
@@ -29,13 +29,5 @@ function HomePageContent() {
         </div>
       </div>
     </div>
-  );
-}
-
-export default function HomePage() {
-  return (
-    <AuthProvider>
-      <HomePageContent />
-    </AuthProvider>
   );
 }

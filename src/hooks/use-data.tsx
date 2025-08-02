@@ -4,7 +4,7 @@ import React, { createContext, useContext, ReactNode, useState, useEffect, useCa
 import { db } from '@/lib/firebase';
 import { collection, onSnapshot, addDoc, updateDoc, deleteDoc, doc, writeBatch, getDocs, query, setDoc, getDoc, where } from 'firebase/firestore';
 import { initialData } from '@/lib/data';
-import type { AppData, Project, Employee, Expense, Task, InventoryItem, User } from '@/lib/types';
+import type { AppData, Project, Employee, Expense, Task, InventoryItem } from '@/lib/types';
 import { useAuth } from './use-auth';
 
 interface DataContextType {
@@ -28,8 +28,9 @@ interface DataContextType {
 const DataContext = createContext<DataContextType | undefined>(undefined);
 
 export function DataProvider({ children }: { children: ReactNode }) {
+  const { user, loading: authLoading } = useAuth();
   const [data, setData] = useState<AppData>({
-    users: [],
+    users: [], // users are now primarily handled by useAuth
     projects: [],
     employees: [],
     expenses: [],
@@ -37,7 +38,6 @@ export function DataProvider({ children }: { children: ReactNode }) {
     inventory: [],
   });
   const [loading, setLoading] = useState(true);
-  const { user, loading: authLoading } = useAuth();
 
   const seedDatabase = useCallback(async () => {
     console.log("Checking if database needs seeding...");
@@ -45,11 +45,11 @@ export function DataProvider({ children }: { children: ReactNode }) {
     const projectsSnapshot = await getDocs(projectsQuery);
 
     if (projectsSnapshot.empty) {
-        console.log("Database is empty. Seeding with initial data (except users)...");
+        console.log("Database is empty. Seeding with initial data...");
         const batch = writeBatch(db);
         
-        // We no longer seed users here. AuthProvider handles user creation.
-
+        // Note: Users are now seeded in use-auth.tsx on first login.
+        // Seeding other collections here.
         initialData.projects.forEach((item: Project) => {
             const docRef = doc(db, "projects", item.id);
             const {id, ...itemData} = item;
@@ -83,38 +83,32 @@ export function DataProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
+
   useEffect(() => {
-    // This effect now simply listens to the user state from useAuth.
-    // It's much simpler and avoids race conditions.
-    if (user && !authLoading) {
-        // First, ensure the rest of the database is seeded if it's empty
-        seedDatabase();
+    // Only proceed if auth has finished loading and we have a user
+    if (!authLoading && user) {
+      seedDatabase(); // Check if the rest of the DB needs seeding
 
-        const collections: (keyof AppData)[] = ['users', 'projects', 'employees', 'expenses', 'tasks', 'inventory'];
-        const unsubscribes = collections.map(collectionName => {
-            return onSnapshot(collection(db, collectionName), (snapshot) => {
-                const items = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as any;
-                setData(prevData => ({ ...prevData, [collectionName]: items }));
-                setLoading(false);
-            }, (error) => {
-                console.error(`Error fetching ${collectionName}:`, error);
-                setLoading(false);
-            });
+      const collections: (keyof AppData)[] = ['projects', 'employees', 'expenses', 'tasks', 'inventory', 'users'];
+      const unsubscribes = collections.map(collectionName => {
+        return onSnapshot(collection(db, collectionName), (snapshot) => {
+          const items = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as any;
+          setData(prevData => ({ ...prevData, [collectionName]: items }));
+        }, (error) => {
+          console.error(`Error fetching ${collectionName}:`, error);
         });
+      });
 
-        return () => unsubscribes.forEach(unsub => unsub());
-    } else if (!authLoading) { // if no user and auth is not loading
-        setLoading(false);
-        setData({
-            users: [],
-            projects: [],
-            employees: [],
-            expenses: [],
-            tasks: [],
-            inventory: [],
-        });
+      setLoading(false); // Data loading is complete
+      
+      return () => unsubscribes.forEach(unsub => unsub());
+
+    } else if (!authLoading && !user) {
+      // If auth is done and there's no user, stop loading.
+      setLoading(false);
     }
   }, [user, authLoading, seedDatabase]);
+
 
   // Firestore operations
   const addProject = async (project: Omit<Project, 'id'>) => {
@@ -203,7 +197,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   const value: DataContextType = {
     data,
-    loading: loading || authLoading, // Combine loading states
+    loading: loading, 
     addProject,
     updateProject,
     deleteProject,

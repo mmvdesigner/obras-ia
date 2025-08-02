@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { AuthProvider, useAuth } from '@/hooks/use-auth';
+import { useAuth } from '@/hooks/use-auth';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { LiderLogo } from '@/components/logo';
@@ -13,6 +13,8 @@ import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { useRouter } from 'next/navigation';
+import { useEffect } from 'react';
 
 
 const loginSchema = z.object({
@@ -22,10 +24,11 @@ const loginSchema = z.object({
 
 type LoginFormValues = z.infer<typeof loginSchema>;
 
-function LoginPageContent() {
-  const { login, loading: authLoading } = useAuth();
+export default function LoginPage() {
+  const { login, user, loading: authLoading } = useAuth();
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
+  const router = useRouter();
 
   const form = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
@@ -34,6 +37,14 @@ function LoginPageContent() {
       password: '',
     },
   });
+
+  // Redirect if user is already logged in
+  useEffect(() => {
+    if (!authLoading && user) {
+      router.push('/dashboard');
+    }
+  }, [user, authLoading, router]);
+
 
   const onSubmit = async (data: LoginFormValues) => {
     setError(null);
@@ -45,8 +56,12 @@ function LoginPageContent() {
         title: 'Falha no Login',
         description: 'E-mail ou senha incorretos.',
       });
+    } else {
+      // onAuthStateChanged in useAuth will trigger redirect
     }
   };
+  
+  const isLoading = form.formState.isSubmitting || authLoading;
 
   return (
     <div className="relative flex min-h-screen flex-col items-center justify-center bg-background">
@@ -95,8 +110,8 @@ function LoginPageContent() {
                   <AlertDescription>{error}</AlertDescription>
                 </Alert>
               )}
-              <Button type="submit" className="w-full" disabled={authLoading}>
-                {authLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 'Entrar'}
+              <Button type="submit" className="w-full" disabled={isLoading}>
+                {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 'Entrar'}
               </Button>
             </form>
           </Form>
@@ -106,13 +121,5 @@ function LoginPageContent() {
         </CardFooter>
       </Card>
     </div>
-  );
-}
-
-export default function LoginPage() {
-  return (
-    <AuthProvider>
-      <LoginPageContent />
-    </AuthProvider>
   );
 }

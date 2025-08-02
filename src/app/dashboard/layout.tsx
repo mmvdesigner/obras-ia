@@ -1,7 +1,7 @@
 'use client';
 
 import { LiderLogo } from '@/components/logo';
-import { AuthProvider } from '@/hooks/use-auth';
+import { useData } from '@/hooks/use-data';
 import { MainNav } from '@/components/dashboard/main-nav';
 import { UserNav } from '@/components/dashboard/user-nav';
 import {
@@ -18,18 +18,26 @@ import { useEffect } from 'react';
 import { useAuth } from '@/hooks/use-auth';
 import Link from 'next/link';
 
-function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
-  const { user, loading } = useAuth();
+export default function DashboardLayout({ children }: { children: React.ReactNode }) {
+  const { user, loading: authLoading } = useAuth();
+  const { loading: dataLoading } = useData();
   const router = useRouter();
 
+  const isLoading = authLoading || dataLoading;
+
   useEffect(() => {
-    if (!loading && !user) {
+    if (!authLoading && !user) {
       router.push('/login');
     }
-  }, [user, loading, router]);
+  }, [user, authLoading, router]);
 
-  if (loading || !user) {
+  if (isLoading) {
     return <div className="flex h-screen w-screen items-center justify-center">Carregando...</div>;
+  }
+  
+  if (!user) {
+    // This can be a brief flash while redirecting, or a fallback.
+    return <div className="flex h-screen w-screen items-center justify-center">Redirecionando...</div>;
   }
   
   return (
@@ -58,13 +66,5 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
           <main className="flex-1 p-4 sm:p-6">{children}</main>
         </SidebarInset>
       </SidebarProvider>
-  );
-}
-
-export default function DashboardLayout({ children }: { children: React.ReactNode }) {
-  return (
-    <AuthProvider>
-        <DashboardLayoutContent>{children}</DashboardLayoutContent>
-    </AuthProvider>
   );
 }
