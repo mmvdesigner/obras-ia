@@ -2,11 +2,12 @@
 
 import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import type { User, AppData } from '@/lib/types';
+import type { User } from '@/lib/types';
 import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut, User as FirebaseUser } from 'firebase/auth';
-import { doc, getDoc, collection, getDocs, query, where, setDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { DataProvider } from './use-data';
+import { initialData } from '@/lib/data';
 
 interface AuthContextType {
   user: User | null;
@@ -18,11 +19,8 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// This wrapper is needed to break the circular dependency between useAuth and useData
-function AuthProviderWrapper({ children }: { children: ReactNode }) {
-    return <DataProvider>{children}</DataProvider>;
-}
-
+// This wrapper is NOT needed anymore and was part of the circular dependency problem.
+// We will render DataProvider inside the AuthProvider content instead.
 
 function AuthProviderContent({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
@@ -32,24 +30,32 @@ function AuthProviderContent({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser: FirebaseUser | null) => {
+      setLoading(true);
       if (firebaseUser) {
-        // User is signed in, let's get their profile
+        // User is signed in, let's get their profile or create it if it doesn't exist
         const userDocRef = doc(db, 'users', firebaseUser.uid);
-        const userDoc = await getDoc(userDocRef);
-        if (userDoc.exists()) {
-          const userData = { id: userDoc.id, ...userDoc.data() } as User;
-          setUser(userData);
-          // Redirect to dashboard only if they are not already there.
-          if(window.location.pathname === '/login' || window.location.pathname === '/') {
-            router.push('/dashboard');
+        let userDoc = await getDoc(userDocRef);
+
+        if (!userDoc.exists()) {
+          console.log(`User document for ${firebaseUser.uid} not found. Creating one.`);
+          // Find the corresponding seed data for the user
+          const seedUser = initialData.users.find(u => u.id === firebaseUser.uid);
+          if (seedUser) {
+            const { id, ...userData } = seedUser;
+            await setDoc(userDocRef, userData);
+            userDoc = await getDoc(userDocRef); // Re-fetch the doc after creation
+          } else {
+             console.error("User authenticated but not found in initialData. Cannot create profile.");
+             await signOut(auth); // Log out user to prevent being stuck
+             setUser(null);
+             setLoading(false);
+             return;
           }
-        } else {
-          // The user exists in Firebase Auth, but not in Firestore.
-          // This can happen on the very first login after seeding is supposed to happen.
-          // The useData hook will handle seeding the user document. We just need to wait.
-          // We will set a temporary user object and wait for the DataProvider to update it.
-           setUser({ id: firebaseUser.uid, email: firebaseUser.email || '', name: 'Carregando...', role: 'Gerente de Obra', avatar: '' });
         }
+        
+        const userData = { id: userDoc.id, ...userDoc.data() } as User;
+        setUser(userData);
+        
       } else {
         // User is signed out
         setUser(null);
@@ -65,7 +71,8 @@ function AuthProviderContent({ children }: { children: ReactNode }) {
     setLoading(true);
     try {
       await signInWithEmailAndPassword(auth, email, pass);
-      // onAuthStateChanged will handle setting the user and redirecting.
+      // onAuthStateChanged will handle setting the user state and loading.
+      // We no longer redirect here to avoid race conditions.
       return true;
     } catch (error) {
       console.error("Login failed:", error);
@@ -100,7 +107,11 @@ function AuthProviderContent({ children }: { children: ReactNode }) {
 
   return (
     <AuthContext.Provider value={{ user, login, logout, loading, updateUser }}>
-      {children}
+      {/* The key fix: The DataProvider is now INSIDE AuthContext.Provider */}
+      {/* so it will re-render when auth state (user, loading) changes. */}
+      <DataProvider>
+        {children}
+      </DataProvider>
     </AuthContext.Provider>
   );
 }
@@ -108,7 +119,8 @@ function AuthProviderContent({ children }: { children: ReactNode }) {
 export function AuthProvider({ children }: { children: ReactNode }) {
     return (
         <AuthProviderContent>
-            <AuthProviderWrapper>{children}</AuthProviderWrapper>
+            {/* We no longer need the wrapper here */}
+            {children}
         </AuthProviderContent>
     );
 }

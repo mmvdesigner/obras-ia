@@ -45,20 +45,10 @@ export function DataProvider({ children }: { children: ReactNode }) {
     const projectsSnapshot = await getDocs(projectsQuery);
 
     if (projectsSnapshot.empty) {
-        console.log("Database is empty. Seeding with initial data...");
+        console.log("Database is empty. Seeding with initial data (except users)...");
         const batch = writeBatch(db);
         
-        initialData.users.forEach((userSeed) => {
-             // Do not seed if the ID is a placeholder
-            if (userSeed.id.startsWith('CHANGE_ME')) {
-                console.warn(`Skipping seeding for user ${userSeed.email} because the UID is a placeholder. Please update it in lib/data.ts`);
-                return;
-            }
-            const userDocRef = doc(db, "users", userSeed.id);
-            const { id, ...userData } = userSeed;
-            batch.set(userDocRef, userData);
-            console.log(`Seeding user data for ${userData.email} with UID ${userSeed.id}`);
-        });
+        // We no longer seed users here. AuthProvider handles user creation.
 
         initialData.projects.forEach((item: Project) => {
             const docRef = doc(db, "projects", item.id);
@@ -94,38 +84,36 @@ export function DataProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
-    const init = async () => {
-        if (user) { 
-            // This is the key change: ensure the user document and other data exists.
-            await seedDatabase();
-            
-            const collections: (keyof AppData)[] = ['users', 'projects', 'employees', 'expenses', 'tasks', 'inventory'];
-            const unsubscribes = collections.map(collectionName => {
-                return onSnapshot(collection(db, collectionName), (snapshot) => {
-                    const items = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as any;
-                    setData(prevData => ({ ...prevData, [collectionName]: items }));
-                    setLoading(false);
-                }, (error) => {
-                    console.error(`Error fetching ${collectionName}:`, error);
-                    setLoading(false);
-                });
-            });
+    // This effect now simply listens to the user state from useAuth.
+    // It's much simpler and avoids race conditions.
+    if (user && !authLoading) {
+        // First, ensure the rest of the database is seeded if it's empty
+        seedDatabase();
 
-            return () => unsubscribes.forEach(unsub => unsub());
-        } else if (!authLoading) { // if no user and auth is not loading
-            setLoading(false);
-            setData({
-              users: [],
-              projects: [],
-              employees: [],
-              expenses: [],
-              tasks: [],
-              inventory: [],
+        const collections: (keyof AppData)[] = ['users', 'projects', 'employees', 'expenses', 'tasks', 'inventory'];
+        const unsubscribes = collections.map(collectionName => {
+            return onSnapshot(collection(db, collectionName), (snapshot) => {
+                const items = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as any;
+                setData(prevData => ({ ...prevData, [collectionName]: items }));
+                setLoading(false);
+            }, (error) => {
+                console.error(`Error fetching ${collectionName}:`, error);
+                setLoading(false);
             });
-        }
+        });
+
+        return () => unsubscribes.forEach(unsub => unsub());
+    } else if (!authLoading) { // if no user and auth is not loading
+        setLoading(false);
+        setData({
+            users: [],
+            projects: [],
+            employees: [],
+            expenses: [],
+            tasks: [],
+            inventory: [],
+        });
     }
-    init();
-
   }, [user, authLoading, seedDatabase]);
 
   // Firestore operations
@@ -215,7 +203,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   const value: DataContextType = {
     data,
-    loading,
+    loading: loading || authLoading, // Combine loading states
     addProject,
     updateProject,
     deleteProject,
