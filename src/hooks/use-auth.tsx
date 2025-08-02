@@ -32,22 +32,22 @@ function AuthProviderContent({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser: FirebaseUser | null) => {
+      setLoading(true);
       if (firebaseUser) {
-        // User is signed in, get their custom data from Firestore
         const userDocRef = doc(db, 'users', firebaseUser.uid);
         const userDoc = await getDoc(userDocRef);
         if (userDoc.exists()) {
           setUser({ id: userDoc.id, ...userDoc.data() } as User);
+          // Only redirect if we are not already on a dashboard page
+          if (!window.location.pathname.startsWith('/dashboard')) {
+            router.push('/dashboard');
+          }
         } else {
-          // This can happen if the user is created in Auth but the Firestore doc isn't ready yet.
-          // A more robust solution might involve creating the user doc here if it doesn't exist.
-          console.warn("User authenticated with Firebase but not found in Firestore:", firebaseUser.uid);
-          // For now, we sign them out to avoid an inconsistent state.
+          console.error("User authenticated but no data found in Firestore. Logging out.");
           await signOut(auth);
           setUser(null);
         }
       } else {
-        // User is signed out
         setUser(null);
       }
       setLoading(false);
@@ -61,9 +61,7 @@ function AuthProviderContent({ children }: { children: ReactNode }) {
     setLoading(true);
     try {
       await signInWithEmailAndPassword(auth, email, pass);
-      // onAuthStateChanged will handle setting the user state and loading state.
-      // We can then safely redirect. The useEffect will catch the user change.
-      router.push('/dashboard');
+      // onAuthStateChanged will handle setting the user state and redirecting.
       return true;
     } catch (error) {
       console.error("Login failed:", error);
@@ -80,7 +78,6 @@ function AuthProviderContent({ children }: { children: ReactNode }) {
     } catch (error) {
       console.error("Logout failed:", error);
     } finally {
-        // onAuthStateChanged will handle clearing the user state
         setUser(null);
         setLoading(false);
     }
