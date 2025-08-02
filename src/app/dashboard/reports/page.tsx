@@ -11,7 +11,6 @@ import { Button } from '@/components/ui/button';
 import { summarizeProjectExpenses, SummarizeProjectExpensesInput } from '@/ai/flows/summarize-project-expenses';
 import { useReactToPrint } from 'react-to-print';
 import { Badge } from '@/components/ui/badge';
-import { DataProvider } from '@/hooks/use-data';
 
 function ReportContent({ projectId }: { projectId: string }) {
     const { data } = useData();
@@ -263,24 +262,13 @@ function ReportContent({ projectId }: { projectId: string }) {
 function ReportsPage() {
   const { data } = useData();
   const [selectedProjectId, setSelectedProjectId] = useState<string>('');
-  const [isPrinting, setIsPrinting] = useState(false);
   const reportRef = useRef<HTMLDivElement>(null);
   const project = useMemo(() => data.projects.find(p => p.id === selectedProjectId), [data, selectedProjectId]);
 
   const handlePrint = useReactToPrint({
     content: () => reportRef.current,
     documentTitle: `Relatorio-${project?.name.replace(/\s/g, '_') || 'obra'}`,
-    onBeforeGetContent: () => setIsPrinting(true),
-    onAfterPrint: () => setIsPrinting(false),
   });
-
-  // react-to-print needs a brief moment for the content to be available in the DOM.
-  // We use a state `isPrinting` to render the component before calling print.
-  useEffect(() => {
-    if (isPrinting) {
-      handlePrint();
-    }
-  }, [isPrinting, handlePrint]);
 
   return (
     <div className="space-y-6">
@@ -322,8 +310,6 @@ function ReportsPage() {
 
 export default function ReportsPageWrapper() {
   return (
-    <DataProvider>
       <ReportsPage />
-    </DataProvider>
   );
 }

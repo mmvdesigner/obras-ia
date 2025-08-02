@@ -2,7 +2,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useData } from '@/hooks/use-data';
 import { Activity, Users, DollarSign, Building2 } from 'lucide-react';
-import { DataProvider } from '@/hooks/use-data';
 import { useMemo } from 'react';
 
 function DashboardPageContent() {
@@ -113,8 +112,6 @@ function DashboardPageContent() {
 
 export default function DashboardPage() {
     return (
-        <DataProvider>
-            <DashboardPageContent />
-        </DataProvider>
+        <DashboardPageContent />
     )
 }
