@@ -38,7 +38,7 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
         <Sidebar>
           <SidebarHeader className="p-4">
             <Link href="/dashboard" className="flex items-center gap-2">
-                <LiderLogo className="w-10 h-auto" />
+                <LiderLogo className="w-8 h-8 text-primary" />
                 <span className="text-xl font-semibold text-primary">LIDER</span>
             </Link>
           </SidebarHeader>

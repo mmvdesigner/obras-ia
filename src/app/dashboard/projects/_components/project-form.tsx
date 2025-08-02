@@ -11,9 +11,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import type { Project } from '@/lib/types';
 import { useData } from '@/hooks/use-data';
 import { useToast } from '@/hooks/use-toast';
-import { useRef } from 'react';
-import { FileText, Trash2, Upload } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { FileText, Trash2, Upload } from 'lucide-react';
+import { useRef } from 'react';
 
 const projectSchema = z.object({
   name: z.string().min(1, 'Nome é obrigatório'),
@@ -91,7 +91,7 @@ export function ProjectForm({ project, onFinished }: ProjectFormProps) {
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-        <ScrollArea className="h-[60vh] md:h-auto">
+        <ScrollArea className="h-[60vh] max-h-[60vh] md:max-h-none md:h-auto">
           <div className="space-y-4 pr-6">
             <FormField
               control={form.control}

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useRef, useEffect } from 'react';
+import { useState, useMemo, useRef } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { Bot, Loader2, Printer, AlertCircle } from 'lucide-react';
 import { useData } from '@/hooks/use-data';
@@ -21,7 +21,10 @@ function ReportHeader({ project }: { project: any }) {
                 <CardTitle>Relatório Geral: {project.name}</CardTitle>
                 <CardDescription>Emitido em: {new Date().toLocaleDateString('pt-BR')}</CardDescription>
             </div>
-            <LiderLogo className="w-24 h-auto" />
+             <div className="flex items-center gap-2">
+                <LiderLogo className="w-8 h-8 text-primary" />
+                <span className="text-xl font-semibold text-primary">LIDER</span>
+            </div>
         </div>
     )
 }
@@ -231,43 +234,45 @@ function ReportContent({ projectId }: { projectId: string }) {
                     </CardContent>
             </Card>
 
-            <Card className="print:shadow-none print:border-none print:bg-transparent">
-                <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                    <Bot /> Análise da IA
-                </CardTitle>
-                <CardDescription>
-                    Resumo inteligente dos gastos e identificação de oportunidades de economia.
-                </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4 print:hidden">
-                <Button onClick={handleGenerateSummary} disabled={!projectId || isLoading} className="w-full sm:w-auto">
-                    {isLoading ? (
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    ) : (
-                        <Bot className="mr-2 h-4 w-4" />
-                    )}
-                    Gerar Análise com IA
-                    </Button>
+            <div className="print:hidden">
+                <Card className="print:shadow-none print:border-none print:bg-transparent">
+                    <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                        <Bot /> Análise da IA
+                    </CardTitle>
+                    <CardDescription>
+                        Resumo inteligente dos gastos e identificação de oportunidades de economia.
+                    </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                    <Button onClick={handleGenerateSummary} disabled={!projectId || isLoading} className="w-full sm:w-auto">
+                        {isLoading ? (
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        ) : (
+                            <Bot className="mr-2 h-4 w-4" />
+                        )}
+                        Gerar Análise com IA
+                        </Button>
 
-                {(isLoading || summary) && (
-                    <Card className="bg-muted/50">
-                        <CardContent className="pt-6">
-                            {isLoading ? (
-                                <div className="space-y-2">
-                                    <p className="animate-pulse">Analisando despesas...</p>
-                                    <p className="animate-pulse w-3/4">Aguarde, a inteligência artificial está trabalhando...</p>
-                                </div>
-                            ) : (
-                                <div className="prose prose-sm dark:prose-invert max-w-none whitespace-pre-wrap">
-                                    {summary}
-                                </div>
-                            )}
-                        </CardContent>
-                    </Card>
-                )}
-                </CardContent>
-            </Card>
+                    {(isLoading || summary) && (
+                        <Card className="bg-muted/50">
+                            <CardContent className="pt-6">
+                                {isLoading ? (
+                                    <div className="space-y-2">
+                                        <p className="animate-pulse">Analisando despesas...</p>
+                                        <p className="animate-pulse w-3/4">Aguarde, a inteligência artificial está trabalhando...</p>
+                                    </div>
+                                ) : (
+                                    <div className="prose prose-sm dark:prose-invert max-w-none whitespace-pre-wrap">
+                                        {summary}
+                                    </div>
+                                )}
+                            </CardContent>
+                        </Card>
+                    )}
+                    </CardContent>
+                </Card>
+            </div>
         </div>
     )
 }

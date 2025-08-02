@@ -15,8 +15,8 @@ function LoginPageContent() {
       <div className="absolute inset-0 bg-gradient-to-br from-primary/20 via-transparent to-transparent -z-10"/>
       <Card className="w-full max-w-sm shadow-2xl rounded-2xl border-2 border-border/20 backdrop-blur-sm bg-background/80">
         <CardHeader className="text-center p-8">
-          <div className="mx-auto mb-4 flex items-center justify-center">
-            <LiderLogo className="h-28 w-auto" />
+          <div className="mx-auto mb-4 flex h-24 w-24 items-center justify-center rounded-full bg-primary/10">
+            <LiderLogo className="h-12 w-12 text-primary" />
           </div>
           <CardTitle className="text-4xl font-bold tracking-tighter text-primary">LIDER</CardTitle>
           <CardDescription className="text-lg text-muted-foreground pt-1">

@@ -65,7 +65,7 @@ export function EmployeeForm({ employee, onFinished, projectId }: EmployeeFormPr
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-        <ScrollArea className="h-[60vh] md:h-auto">
+        <ScrollArea className="h-[60vh] max-h-[60vh] md:max-h-none md:h-auto">
           <div className="space-y-4 pr-6">
             <FormField
               control={form.control}
