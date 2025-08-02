@@ -19,9 +19,8 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// This wrapper is NOT needed anymore and was part of the circular dependency problem.
-// We will render DataProvider inside the AuthProvider content instead.
 
+// This component now contains all the logic and correctly wraps the DataProvider
 function AuthProviderContent({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
