@@ -2,9 +2,9 @@
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useCallback } from 'react';
 import { db } from '@/lib/firebase';
-import { collection, onSnapshot, addDoc, updateDoc, deleteDoc, doc, writeBatch, getDocs, query } from 'firebase/firestore';
+import { collection, onSnapshot, addDoc, updateDoc, deleteDoc, doc, writeBatch, getDocs, query, setDoc } from 'firebase/firestore';
 import { initialData } from '@/lib/data';
-import type { AppData, Project, Employee, Expense, Task, InventoryItem } from '@/lib/types';
+import type { AppData, Project, Employee, Expense, Task, InventoryItem, User } from '@/lib/types';
 import { useAuth } from './use-auth';
 
 interface DataContextType {
@@ -37,40 +37,47 @@ export function DataProvider({ children }: { children: ReactNode }) {
     inventory: [],
   });
   const [loading, setLoading] = useState(true);
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
 
   const seedDatabase = useCallback(async () => {
     console.log("Checking if database needs seeding...");
     const projectsQuery = query(collection(db, "projects"));
     const projectsSnapshot = await getDocs(projectsQuery);
+
     if (projectsSnapshot.empty) {
         console.log("Database is empty. Seeding with initial data...");
         const batch = writeBatch(db);
 
-        // Make sure to use the Firebase Auth UID as the document ID for users
-        initialData.users.forEach(item => {
+        // NOTE: The user IDs MUST match the UIDs from Firebase Auth
+        initialData.users.forEach((item: User) => {
             const docRef = doc(db, "users", item.id);
-            batch.set(docRef, item);
+            const {id, ...itemData} = item;
+            batch.set(docRef, itemData);
         });
-        initialData.projects.forEach(item => {
+        initialData.projects.forEach((item: Project) => {
             const docRef = doc(db, "projects", item.id);
-            batch.set(docRef, item);
+            const {id, ...itemData} = item;
+            batch.set(docRef, itemData);
         });
-        initialData.employees.forEach(item => {
+        initialData.employees.forEach((item: Employee) => {
             const docRef = doc(db, "employees", item.id);
-            batch.set(docRef, item);
+            const {id, ...itemData} = item;
+            batch.set(docRef, itemData);
         });
-        initialData.expenses.forEach(item => {
+        initialData.expenses.forEach((item: Expense) => {
             const docRef = doc(db, "expenses", item.id);
-            batch.set(docRef, item);
+            const {id, ...itemData} = item;
+            batch.set(docRef, itemData);
         });
-        initialData.tasks.forEach(item => {
+        initialData.tasks.forEach((item: Task) => {
             const docRef = doc(db, "tasks", item.id);
-            batch.set(docRef, item);
+            const {id, ...itemData} = item;
+            batch.set(docRef, itemData);
         });
-        initialData.inventory.forEach(item => {
+        initialData.inventory.forEach((item: InventoryItem) => {
             const docRef = doc(db, "inventory", item.id);
-            batch.set(docRef, item);
+            const {id, ...itemData} = item;
+            batch.set(docRef, itemData);
         });
 
         await batch.commit();
@@ -81,33 +88,38 @@ export function DataProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
-    if (user) { 
-        seedDatabase(); 
-        
-        const collections: (keyof AppData)[] = ['users', 'projects', 'employees', 'expenses', 'tasks', 'inventory'];
-        const unsubscribes = collections.map(collectionName => {
-            return onSnapshot(collection(db, collectionName), (snapshot) => {
-                const items = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as any;
-                setData(prevData => ({ ...prevData, [collectionName]: items }));
-                setLoading(false);
-            }, (error) => {
-                console.error(`Error fetching ${collectionName}:`, error);
-                setLoading(false);
+    const init = async () => {
+        if (user) { 
+            await seedDatabase(); 
+            
+            const collections: (keyof AppData)[] = ['users', 'projects', 'employees', 'expenses', 'tasks', 'inventory'];
+            const unsubscribes = collections.map(collectionName => {
+                return onSnapshot(collection(db, collectionName), (snapshot) => {
+                    const items = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as any;
+                    setData(prevData => ({ ...prevData, [collectionName]: items }));
+                    setLoading(false);
+                }, (error) => {
+                    console.error(`Error fetching ${collectionName}:`, error);
+                    setLoading(false);
+                });
             });
-        });
 
-        return () => unsubscribes.forEach(unsub => unsub());
-    } else if (!loading) { // if no user and not in initial loading state
-        setData({
-          users: [],
-          projects: [],
-          employees: [],
-          expenses: [],
-          tasks: [],
-          inventory: [],
-        });
+            return () => unsubscribes.forEach(unsub => unsub());
+        } else if (!authLoading) { // if no user and auth is not loading
+            setLoading(false);
+            setData({
+              users: [],
+              projects: [],
+              employees: [],
+              expenses: [],
+              tasks: [],
+              inventory: [],
+            });
+        }
     }
-  }, [user, seedDatabase, loading]);
+    init();
+
+  }, [user, authLoading, seedDatabase]);
 
   // Firestore operations
   const addProject = async (project: Omit<Project, 'id'>) => {

@@ -7,7 +7,6 @@ import * as z from 'zod';
 import { AuthProvider, useAuth } from '@/hooks/use-auth';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { DataProvider } from '@/hooks/use-data';
 import { LiderLogo } from '@/components/logo';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
@@ -113,9 +112,7 @@ function LoginPageContent() {
 export default function LoginPage() {
   return (
     <AuthProvider>
-      <DataProvider>
-        <LoginPageContent />
-      </DataProvider>
+      <LoginPageContent />
     </AuthProvider>
   );
 }

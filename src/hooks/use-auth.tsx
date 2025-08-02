@@ -2,10 +2,9 @@
 
 import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { useLocalStorage } from './use-local-storage';
-import type { User, UserRole, AppData } from '@/lib/types';
-import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut } from 'firebase/auth';
-import { doc, getDoc, collection, getDocs, query, where } from 'firebase/firestore';
+import type { User, AppData } from '@/lib/types';
+import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut, User as FirebaseUser } from 'firebase/auth';
+import { doc, getDoc, collection, getDocs, query, where, setDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { DataProvider } from './use-data';
 
@@ -14,10 +13,11 @@ interface AuthContextType {
   loading: boolean;
   login: (email: string, pass: string) => Promise<boolean>;
   logout: () => void;
-  updateUser: (user: User) => void;
+  updateUser: (user: User) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
 
 function AuthProviderContent({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
@@ -26,7 +26,7 @@ function AuthProviderContent({ children }: { children: ReactNode }) {
   const auth = getAuth();
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser: FirebaseUser | null) => {
       if (firebaseUser) {
         // User is signed in, get their custom data from Firestore
         const userDocRef = doc(db, 'users', firebaseUser.uid);
@@ -35,6 +35,7 @@ function AuthProviderContent({ children }: { children: ReactNode }) {
           setUser({ id: userDoc.id, ...userDoc.data() } as User);
         } else {
           // Handle case where user exists in Auth but not in Firestore
+          console.warn("User authenticated with Firebase but not found in Firestore:", firebaseUser.uid);
           setUser(null);
         }
       } else {
@@ -52,7 +53,8 @@ function AuthProviderContent({ children }: { children: ReactNode }) {
     setLoading(true);
     try {
       await signInWithEmailAndPassword(auth, email, pass);
-      // onAuthStateChanged will handle setting the user and redirecting
+      // onAuthStateChanged will handle setting the user state.
+      // We can then safely redirect.
       router.push('/dashboard');
       return true;
     } catch (error) {
@@ -64,14 +66,26 @@ function AuthProviderContent({ children }: { children: ReactNode }) {
 
   const logout = async () => {
     setLoading(true);
-    await signOut(auth);
-    router.push('/login');
-    // onAuthStateChanged will handle clearing the user
+    try {
+      await signOut(auth);
+      router.push('/login');
+    } catch (error) {
+      console.error("Logout failed:", error);
+    } finally {
+        // onAuthStateChanged will handle clearing the user state
+        setLoading(false);
+    }
   };
 
   const updateUser = useCallback(async (updatedUser: User) => {
-    setUser(updatedUser);
-    // The update will be handled by the onSnapshot listener in useData
+     try {
+      const { id, ...userData } = updatedUser;
+      const userDocRef = doc(db, 'users', id);
+      await setDoc(userDocRef, userData, { merge: true });
+      setUser(updatedUser);
+    } catch (error) {
+      console.error("Failed to update user:", error);
+    }
   }, []);
 
   return (
@@ -88,7 +102,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         </AuthProviderContent>
     );
 }
-
 
 export function useAuth() {
   const context = useContext(AuthContext);
