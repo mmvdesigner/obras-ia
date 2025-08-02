@@ -32,22 +32,26 @@ function AuthProviderContent({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser: FirebaseUser | null) => {
-      setLoading(true);
       if (firebaseUser) {
+        // User is signed in, let's get their profile
         const userDocRef = doc(db, 'users', firebaseUser.uid);
         const userDoc = await getDoc(userDocRef);
         if (userDoc.exists()) {
-          setUser({ id: userDoc.id, ...userDoc.data() } as User);
-          // Only redirect if we are not already on a dashboard page
-          if (!window.location.pathname.startsWith('/dashboard')) {
+          const userData = { id: userDoc.id, ...userDoc.data() } as User;
+          setUser(userData);
+          // Redirect to dashboard only if they are not already there.
+          if(window.location.pathname === '/login' || window.location.pathname === '/') {
             router.push('/dashboard');
           }
         } else {
-          console.error("User authenticated but no data found in Firestore. Logging out.");
-          await signOut(auth);
-          setUser(null);
+          // The user exists in Firebase Auth, but not in Firestore.
+          // This can happen on the very first login after seeding is supposed to happen.
+          // The useData hook will handle seeding the user document. We just need to wait.
+          // We will set a temporary user object and wait for the DataProvider to update it.
+           setUser({ id: firebaseUser.uid, email: firebaseUser.email || '', name: 'Carregando...', role: 'Gerente de Obra', avatar: '' });
         }
       } else {
+        // User is signed out
         setUser(null);
       }
       setLoading(false);
@@ -61,7 +65,7 @@ function AuthProviderContent({ children }: { children: ReactNode }) {
     setLoading(true);
     try {
       await signInWithEmailAndPassword(auth, email, pass);
-      // onAuthStateChanged will handle setting the user state and redirecting.
+      // onAuthStateChanged will handle setting the user and redirecting.
       return true;
     } catch (error) {
       console.error("Login failed:", error);

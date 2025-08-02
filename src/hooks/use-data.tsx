@@ -96,13 +96,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const init = async () => {
         if (user) { 
-            // Check for user document before seeding.
-            const userDoc = await getDoc(doc(db, 'users', user.id));
-            if (!userDoc.exists()) {
-                console.log(`User doc for ${user.id} not found. Seeding database...`);
-                // Only seed if the current user doc doesn't exist, which implies a fresh setup.
-                await seedDatabase();
-            }
+            // This is the key change: ensure the user document and other data exists.
+            await seedDatabase();
             
             const collections: (keyof AppData)[] = ['users', 'projects', 'employees', 'expenses', 'tasks', 'inventory'];
             const unsubscribes = collections.map(collectionName => {
