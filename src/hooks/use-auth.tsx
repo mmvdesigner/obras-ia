@@ -6,8 +6,8 @@ import type { User } from '@/lib/types';
 import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut, User as FirebaseUser } from 'firebase/auth';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import { DataProvider } from './use-data';
 import { initialData } from '@/lib/data';
+import { DataProvider } from './use-data';
 
 interface AuthContextType {
   user: User | null;
@@ -18,7 +18,6 @@ interface AuthContextType {
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
-
 
 // This component now contains all the logic and correctly wraps the DataProvider
 function AuthProviderContent({ children }: { children: ReactNode }) {
