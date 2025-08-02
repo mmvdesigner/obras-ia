@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useCallback } from 'react';
 import { db } from '@/lib/firebase';
-import { collection, onSnapshot, addDoc, updateDoc, deleteDoc, doc, writeBatch, getDocs, query, setDoc, getDoc } from 'firebase/firestore';
+import { collection, onSnapshot, addDoc, updateDoc, deleteDoc, doc, writeBatch, getDocs, query, setDoc, getDoc, where } from 'firebase/firestore';
 import { initialData } from '@/lib/data';
 import type { AppData, Project, Employee, Expense, Task, InventoryItem, User } from '@/lib/types';
 import { useAuth } from './use-auth';
@@ -16,7 +16,7 @@ interface DataContextType {
   addEmployee: (employee: Omit<Employee, 'id'>) => Promise<void>;
   updateEmployee: (employee: Employee) => Promise<void>;
   deleteEmployee: (employeeId: string) => Promise<void>;
-  addExpense: (expense: Omit<Expense, 'id'>) => Promise<void>;
+  addExpense: (expense: Omit<Expense, 'id'>) => Promise<any>;
   updateExpense: (expense: Expense) => Promise<void>;
   deleteExpense: (expenseId: string) => Promise<void>;
   addTask: (task: Omit<Task, 'id'>) => Promise<void>;
@@ -48,28 +48,17 @@ export function DataProvider({ children }: { children: ReactNode }) {
         console.log("Database is empty. Seeding with initial data...");
         const batch = writeBatch(db);
         
-        // This is a critical step. The 'id' in initialData.users is a placeholder.
-        // It MUST be replaced with the actual UID from Firebase Auth.
-        // We will now handle this by checking for existing users by email.
-        const usersRef = collection(db, "users");
-        for (const userSeed of initialData.users) {
-            // It's vital that the emails in initialData match the emails in Firebase Auth
-            const userQuery = query(usersRef, where("email", "==", userSeed.email));
-            const userSnapshot = await getDocs(userQuery);
-            if (userSnapshot.empty) {
-                // If user doesn't exist by email, we can't get their real UID.
-                // We'll log a warning. You MUST create users in Firebase Auth first.
-                 console.warn(`Cannot seed user ${userSeed.email}. Make sure this user exists in Firebase Authentication.`);
-            } else {
-                 // The user exists, let's use their actual UID as the document ID
-                 const actualUserId = userSnapshot.docs[0].id;
-                 const userDocRef = doc(db, "users", actualUserId);
-                 const { id, ...userData } = userSeed;
-                 batch.set(userDocRef, userData);
-                 console.log(`Seeding user data for ${userData.email} with UID ${actualUserId}`);
+        initialData.users.forEach((userSeed) => {
+             // Do not seed if the ID is a placeholder
+            if (userSeed.id.startsWith('CHANGE_ME')) {
+                console.warn(`Skipping seeding for user ${userSeed.email} because the UID is a placeholder. Please update it in lib/data.ts`);
+                return;
             }
-        }
-
+            const userDocRef = doc(db, "users", userSeed.id);
+            const { id, ...userData } = userSeed;
+            batch.set(userDocRef, userData);
+            console.log(`Seeding user data for ${userData.email} with UID ${userSeed.id}`);
+        });
 
         initialData.projects.forEach((item: Project) => {
             const docRef = doc(db, "projects", item.id);
@@ -151,7 +140,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   const updateProject = async (updatedProject: Project) => {
     const { id, ...data } = updatedProject;
-    await setDoc(doc(db, 'projects', id), data);
+    await setDoc(doc(db, 'projects', id), data, { merge: true });
   };
 
   const deleteProject = async (projectId: string) => {
@@ -164,7 +153,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   const updateEmployee = async (updatedEmployee: Employee) => {
     const { id, ...data } = updatedEmployee;
-    await setDoc(doc(db, 'employees', id), data);
+    await setDoc(doc(db, 'employees', id), data, { merge: true });
   };
 
   const deleteEmployee = async (employeeId: string) => {
@@ -176,18 +165,17 @@ export function DataProvider({ children }: { children: ReactNode }) {
       
       // Update inventory
       if (expense.category === 'material' && expense.materialName && expense.quantity && expense.unitPrice) {
-          const inventoryQuery = query(collection(db, 'inventory'));
+          const inventoryQuery = query(collection(db, 'inventory'), where('projectId', '==', expense.projectId), where('name', '==', expense.materialName));
           const inventorySnapshot = await getDocs(inventoryQuery);
-          const inventoryItems = inventorySnapshot.docs.map(doc => ({id: doc.id, ...doc.data()})) as InventoryItem[];
-
-          const itemIndex = inventoryItems.findIndex(i => i.projectId === expense.projectId && i.name.toLowerCase() === expense.materialName!.toLowerCase());
           
-          if (itemIndex > -1) {
-              const existingItem = inventoryItems[itemIndex];
+          if (!inventorySnapshot.empty) {
+              const existingItemDoc = inventorySnapshot.docs[0];
+              const existingItem = existingItemDoc.data() as InventoryItem;
+
               const totalQuantity = existingItem.quantity + expense.quantity;
               const newAveragePrice = ((existingItem.quantity * existingItem.averagePrice) + (expense.quantity * expense.unitPrice)) / totalQuantity;
               
-              await updateDoc(doc(db, 'inventory', existingItem.id), {
+              await updateDoc(existingItemDoc.ref, {
                   quantity: totalQuantity,
                   averagePrice: newAveragePrice,
               });
@@ -206,7 +194,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
   
   const updateExpense = async (updatedExpense: Expense) => {
     const { id, ...data } = updatedExpense;
-    await setDoc(doc(db, 'expenses', id), data);
+    await setDoc(doc(db, 'expenses', id), data, { merge: true });
   };
   
   const deleteExpense = async (expenseId: string) => {
@@ -219,7 +207,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
   
   const updateTask = async (updatedTask: Task) => {
     const { id, ...data } = updatedTask;
-    await setDoc(doc(db, 'tasks', id), data);
+    await setDoc(doc(db, 'tasks', id), data, { merge: true });
   };
   
   const deleteTask = async (taskId: string) => {
