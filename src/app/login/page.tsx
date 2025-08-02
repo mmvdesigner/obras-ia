@@ -1,14 +1,53 @@
 'use client';
 
-import { Wrench, Fingerprint } from 'lucide-react';
+import { useState } from 'react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import * as z from 'zod';
 import { AuthProvider, useAuth } from '@/hooks/use-auth';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { DataProvider } from '@/hooks/use-data';
 import { LiderLogo } from '@/components/logo';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Input } from '@/components/ui/input';
+import { useToast } from '@/hooks/use-toast';
+import { Loader2 } from 'lucide-react';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+
+
+const loginSchema = z.object({
+  email: z.string().email('Por favor, insira um e-mail válido.'),
+  password: z.string().min(1, 'Senha é obrigatória.'),
+});
+
+type LoginFormValues = z.infer<typeof loginSchema>;
 
 function LoginPageContent() {
-  const { login } = useAuth();
+  const { login, loading: authLoading } = useAuth();
+  const [error, setError] = useState<string | null>(null);
+  const { toast } = useToast();
+
+  const form = useForm<LoginFormValues>({
+    resolver: zodResolver(loginSchema),
+    defaultValues: {
+      email: '',
+      password: '',
+    },
+  });
+
+  const onSubmit = async (data: LoginFormValues) => {
+    setError(null);
+    const success = await login(data.email, data.password);
+    if (!success) {
+      setError('Credenciais inválidas. Verifique seu e-mail e senha.');
+      toast({
+        variant: 'destructive',
+        title: 'Falha no Login',
+        description: 'E-mail ou senha incorretos.',
+      });
+    }
+  };
 
   return (
     <div className="relative flex min-h-screen flex-col items-center justify-center bg-background">
@@ -20,29 +59,48 @@ function LoginPageContent() {
           </div>
           <CardTitle className="text-4xl font-bold tracking-tighter text-primary">LIDER</CardTitle>
           <CardDescription className="text-lg text-muted-foreground pt-1">
-            Selecione seu perfil para acessar o sistema.
+            Acesse o sistema com suas credenciais.
           </CardDescription>
         </CardHeader>
         <CardContent className="px-8">
-          <div className="space-y-4">
-            <Button
-              size="lg"
-              className="w-full h-14 text-lg font-semibold"
-              onClick={() => login('Administrator')}
-            >
-              <Fingerprint className="mr-3 h-6 w-6" />
-              Administrador
-            </Button>
-            <Button
-              size="lg"
-              variant="secondary"
-              className="w-full h-14 text-lg font-semibold"
-              onClick={() => login('Gerente de Obra')}
-            >
-              <Wrench className="mr-3 h-6 w-6" />
-              Gerente de Obra
-            </Button>
-          </div>
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+              <FormField
+                control={form.control}
+                name="email"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Email</FormLabel>
+                    <FormControl>
+                      <Input type="email" placeholder="seu@email.com" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="password"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Senha</FormLabel>
+                    <FormControl>
+                      <Input type="password" placeholder="********" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              {error && (
+                <Alert variant="destructive">
+                  <AlertDescription>{error}</AlertDescription>
+                </Alert>
+              )}
+              <Button type="submit" className="w-full" disabled={authLoading}>
+                {authLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 'Entrar'}
+              </Button>
+            </form>
+          </Form>
         </CardContent>
         <CardFooter className="p-8 text-center text-sm text-muted-foreground">
             <p>Problemas para acessar? Entre em contato com o suporte.</p>

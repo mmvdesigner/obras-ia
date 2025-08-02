@@ -28,7 +28,14 @@ interface DataContextType {
 const DataContext = createContext<DataContextType | undefined>(undefined);
 
 export function DataProvider({ children }: { children: ReactNode }) {
-  const [data, setData] = useState<AppData>(initialData);
+  const [data, setData] = useState<AppData>({
+    users: [],
+    projects: [],
+    employees: [],
+    expenses: [],
+    tasks: [],
+    inventory: [],
+  });
   const [loading, setLoading] = useState(true);
   const { user } = useAuth();
 
@@ -40,6 +47,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
         console.log("Database is empty. Seeding with initial data...");
         const batch = writeBatch(db);
 
+        // Make sure to use the Firebase Auth UID as the document ID for users
         initialData.users.forEach(item => {
             const docRef = doc(db, "users", item.id);
             batch.set(docRef, item);
@@ -89,11 +97,17 @@ export function DataProvider({ children }: { children: ReactNode }) {
         });
 
         return () => unsubscribes.forEach(unsub => unsub());
-    } else {
-        setLoading(false);
-        setData(initialData);
+    } else if (!loading) { // if no user and not in initial loading state
+        setData({
+          users: [],
+          projects: [],
+          employees: [],
+          expenses: [],
+          tasks: [],
+          inventory: [],
+        });
     }
-  }, [user, seedDatabase]);
+  }, [user, seedDatabase, loading]);
 
   // Firestore operations
   const addProject = async (project: Omit<Project, 'id'>) => {

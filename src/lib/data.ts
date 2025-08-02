@@ -1,9 +1,13 @@
 import type { AppData } from './types';
 
+// NOTE: The user IDs must now match the UIDs from Firebase Authentication
+// After creating users in the Firebase Console, update these IDs accordingly.
 export const initialData: AppData = {
   users: [
-    { id: '1', name: 'Admin User', email: 'admin@buildwise.com', role: 'Administrator', avatar: '/avatars/01.png' },
-    { id: '2', name: 'Manager User', email: 'manager@buildwise.com', role: 'Gerente de Obra', avatar: '/avatars/02.png' },
+    // Example: Replace 'FIREBASE_UID_ADMIN' with the actual UID from Firebase Auth
+    { id: '3iS9qW4aE7Y2Z0Z6j5x7rN8p2oB3', name: 'Admin User', email: 'admin@buildwise.com', role: 'Administrator', avatar: '/avatars/01.png' },
+    // Example: Replace 'FIREBASE_UID_MANAGER' with the actual UID from Firebase Auth
+    { id: 'kM5jH8fG6dC4b2a1L9pOnQwY7zI2', name: 'Manager User', email: 'manager@buildwise.com', role: 'Gerente de Obra', avatar: '/avatars/02.png' },
   ],
   projects: [
     {

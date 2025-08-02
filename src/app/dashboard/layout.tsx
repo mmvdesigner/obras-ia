@@ -16,7 +16,6 @@ import {
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 import { useAuth } from '@/hooks/use-auth';
-import { DataProvider } from '@/hooks/use-data';
 import Link from 'next/link';
 
 function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
@@ -65,9 +64,7 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   return (
     <AuthProvider>
-        <DataProvider>
-            <DashboardLayoutContent>{children}</DashboardLayoutContent>
-        </DataProvider>
+        <DashboardLayoutContent>{children}</DashboardLayoutContent>
     </AuthProvider>
   );
 }
