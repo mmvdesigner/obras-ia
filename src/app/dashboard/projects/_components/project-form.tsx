@@ -13,6 +13,7 @@ import { useData } from '@/hooks/use-data';
 import { useToast } from '@/hooks/use-toast';
 import { useRef } from 'react';
 import { FileText, Trash2, Upload } from 'lucide-react';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 const projectSchema = z.object({
   name: z.string().min(1, 'Nome é obrigatório'),
@@ -90,156 +91,161 @@ export function ProjectForm({ project, onFinished }: ProjectFormProps) {
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-        <FormField
-          control={form.control}
-          name="name"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Nome da Obra</FormLabel>
-              <FormControl>
-                <Input placeholder="Residencial Sol Nascente" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        <FormField
-          control={form.control}
-          name="address"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Endereço</FormLabel>
-              <FormControl>
-                <Input placeholder="Rua das Acácias, 123" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        <FormField
-          control={form.control}
-          name="client"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Cliente</FormLabel>
-              <FormControl>
-                <Input placeholder="Construtora Confiança" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-          <FormField
-            control={form.control}
-            name="startDate"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Data de Início</FormLabel>
-                <FormControl>
-                  <Input type="date" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          <FormField
-            control={form.control}
-            name="endDate"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Previsão de Término</FormLabel>
-                <FormControl>
-                  <Input type="date" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        </div>
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+        <ScrollArea className="h-[60vh] md:h-auto">
+          <div className="space-y-4 pr-6">
             <FormField
-            control={form.control}
-            name="totalBudget"
-            render={({ field }) => (
+              control={form.control}
+              name="name"
+              render={({ field }) => (
                 <FormItem>
-                <FormLabel>Orçamento Total</FormLabel>
-                <FormControl>
-                    <Input type="number" placeholder="500000" {...field} />
-                </FormControl>
-                <FormMessage />
+                  <FormLabel>Nome da Obra</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Residencial Sol Nascente" {...field} />
+                  </FormControl>
+                  <FormMessage />
                 </FormItem>
-            )}
+              )}
             />
             <FormField
-            control={form.control}
-            name="status"
-            render={({ field }) => (
+              control={form.control}
+              name="address"
+              render={({ field }) => (
                 <FormItem>
-                <FormLabel>Status</FormLabel>
-                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                  <FormLabel>Endereço</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Rua das Acácias, 123" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="client"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Cliente</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Construtora Confiança" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <FormField
+                control={form.control}
+                name="startDate"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Data de Início</FormLabel>
                     <FormControl>
-                    <SelectTrigger>
-                        <SelectValue placeholder="Selecione o status" />
-                    </SelectTrigger>
+                      <Input type="date" {...field} />
                     </FormControl>
-                    <SelectContent>
-                    <SelectItem value="planejamento">Planejamento</SelectItem>
-                    <SelectItem value="em andamento">Em Andamento</SelectItem>
-                    <SelectItem value="pausada">Pausada</SelectItem>
-                    <SelectItem value="concluída">Concluída</SelectItem>
-                    </SelectContent>
-                </Select>
-                <FormMessage />
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="endDate"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Previsão de Término</FormLabel>
+                    <FormControl>
+                      <Input type="date" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <FormField
+                control={form.control}
+                name="totalBudget"
+                render={({ field }) => (
+                    <FormItem>
+                    <FormLabel>Orçamento Total</FormLabel>
+                    <FormControl>
+                        <Input type="number" placeholder="500000" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                    </FormItem>
+                )}
+                />
+                <FormField
+                control={form.control}
+                name="status"
+                render={({ field }) => (
+                    <FormItem>
+                    <FormLabel>Status</FormLabel>
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <FormControl>
+                        <SelectTrigger>
+                            <SelectValue placeholder="Selecione o status" />
+                        </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                        <SelectItem value="planejamento">Planejamento</SelectItem>
+                        <SelectItem value="em andamento">Em Andamento</SelectItem>
+                        <SelectItem value="pausada">Pausada</SelectItem>
+                        <SelectItem value="concluída">Concluída</SelectItem>
+                        </SelectContent>
+                    </Select>
+                    <FormMessage />
+                    </FormItem>
+                )}
+                />
+            </div>
+            <FormField
+              control={form.control}
+              name="description"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Descrição</FormLabel>
+                  <FormControl>
+                    <Textarea placeholder="Detalhes sobre a obra..." {...field} />
+                  </FormControl>
+                  <FormMessage />
                 </FormItem>
-            )}
+              )}
             />
-        </div>
-        <FormField
-          control={form.control}
-          name="description"
-          render={({ field }) => (
+            
             <FormItem>
-              <FormLabel>Descrição</FormLabel>
-              <FormControl>
-                <Textarea placeholder="Detalhes sobre a obra..." {...field} />
-              </FormControl>
+              <FormLabel>Documentos da Obra</FormLabel>
+              <div>
+                <input 
+                  type="file" 
+                  ref={fileInputRef} 
+                  onChange={handleFileChange}
+                  className="hidden" 
+                />
+                <Button type="button" variant="outline" onClick={() => fileInputRef.current?.click()}>
+                    <Upload className="mr-2 h-4 w-4" /> Carregar Arquivo
+                </Button>
+              </div>
+                <div className="space-y-2 mt-2">
+                  {fields.map((field, index) => (
+                    <div key={field.id} className="flex items-center justify-between rounded-md border p-2">
+                        <div className="flex items-center gap-2">
+                            <FileText className="h-4 w-4 text-muted-foreground" />
+                            <span className="text-sm">{field.value}</span>
+                        </div>
+                        <Button type="button" variant="ghost" size="icon" onClick={() => handleRemoveFile(index)}>
+                            <Trash2 className="h-4 w-4 text-destructive" />
+                        </Button>
+                    </div>
+                  ))}
+                </div>
               <FormMessage />
             </FormItem>
-          )}
-        />
-        
-        <FormItem>
-          <FormLabel>Documentos da Obra</FormLabel>
-          <div>
-            <input 
-              type="file" 
-              ref={fileInputRef} 
-              onChange={handleFileChange}
-              className="hidden" 
-            />
-            <Button type="button" variant="outline" onClick={() => fileInputRef.current?.click()}>
-                <Upload className="mr-2 h-4 w-4" /> Carregar Arquivo
-            </Button>
           </div>
-            <div className="space-y-2 mt-2">
-              {fields.map((field, index) => (
-                <div key={field.id} className="flex items-center justify-between rounded-md border p-2">
-                    <div className="flex items-center gap-2">
-                        <FileText className="h-4 w-4 text-muted-foreground" />
-                        <span className="text-sm">{field.value}</span>
-                    </div>
-                    <Button type="button" variant="ghost" size="icon" onClick={() => handleRemoveFile(index)}>
-                        <Trash2 className="h-4 w-4 text-destructive" />
-                    </Button>
-                </div>
-              ))}
-            </div>
-          <FormMessage />
-        </FormItem>
-
-
-        <Button type="submit">{project ? 'Salvar Alterações' : 'Criar Obra'}</Button>
+        </ScrollArea>
+        <div className="flex justify-end pt-4 gap-2">
+            <Button type="button" variant="ghost" onClick={onFinished}>Cancelar</Button>
+            <Button type="submit">{project ? 'Salvar Alterações' : 'Criar Obra'}</Button>
+        </div>
       </form>
     </Form>
   );

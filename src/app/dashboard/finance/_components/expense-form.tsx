@@ -12,6 +12,7 @@ import type { Expense, ExpenseCategory, ExpenseStatus } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { Textarea } from '@/components/ui/textarea';
 import { useEffect } from 'react';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 const expenseSchema = z.object({
   description: z.string().min(1, 'Descrição é obrigatória'),
@@ -101,95 +102,126 @@ export function ExpenseForm({ expense, onFinished, projectId }: ExpenseFormProps
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="md:col-span-2">
-            <FormField
+       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+        <ScrollArea className="h-[60vh] md:h-auto">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pr-6">
+                <div className="md:col-span-2">
+                    <FormField
+                        control={form.control}
+                        name="projectId"
+                        render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>Obra Vinculada</FormLabel>
+                            <Input disabled value={data.projects.find(p => p.id === projectId)?.name} />
+                            <FormMessage />
+                        </FormItem>
+                        )}
+                    />
+                </div>
+
+                <FormField
                 control={form.control}
-                name="projectId"
+                name="category"
                 render={({ field }) => (
-                <FormItem>
-                    <FormLabel>Obra Vinculada</FormLabel>
-                    <Input disabled value={data.projects.find(p => p.id === projectId)?.name} />
+                    <FormItem>
+                    <FormLabel>Categoria</FormLabel>
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <FormControl>
+                        <SelectTrigger>
+                            <SelectValue placeholder="Selecione uma categoria" />
+                        </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                        {Object.entries(categoryLabels).map(([value, label]) => (
+                            <SelectItem key={value} value={value}>
+                            {label}
+                            </SelectItem>
+                        ))}
+                        </SelectContent>
+                    </Select>
                     <FormMessage />
-                </FormItem>
+                    </FormItem>
                 )}
-            />
-        </div>
-
-        <FormField
-          control={form.control}
-          name="category"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Categoria</FormLabel>
-              <Select onValueChange={field.onChange} defaultValue={field.value}>
-                <FormControl>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione uma categoria" />
-                  </SelectTrigger>
-                </FormControl>
-                <SelectContent>
-                  {Object.entries(categoryLabels).map(([value, label]) => (
-                    <SelectItem key={value} value={value}>
-                      {label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        <FormField
-            control={form.control}
-            name="description"
-            render={({ field }) => (
-                <FormItem>
-                <FormLabel>Descrição</FormLabel>
-                <FormControl>
-                    <Input placeholder="Compra de cimento" {...field} />
-                </FormControl>
-                <FormMessage />
-                </FormItem>
-            )}
-            />
-
-        {watchedCategory === 'material' && (
-            <>
-                 <FormField
+                />
+                <FormField
                     control={form.control}
-                    name="materialName"
+                    name="description"
                     render={({ field }) => (
-                    <FormItem>
-                        <FormLabel>Nome do Material</FormLabel>
+                        <FormItem>
+                        <FormLabel>Descrição</FormLabel>
                         <FormControl>
-                            <Input placeholder="Cimento CPII" {...field} />
+                            <Input placeholder="Compra de cimento" {...field} />
                         </FormControl>
                         <FormMessage />
-                    </FormItem>
+                        </FormItem>
                     )}
-                />
-                 <FormField
+                    />
+
+                {watchedCategory === 'material' && (
+                    <>
+                        <FormField
+                            control={form.control}
+                            name="materialName"
+                            render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Nome do Material</FormLabel>
+                                <FormControl>
+                                    <Input placeholder="Cimento CPII" {...field} />
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem>
+                            )}
+                        />
+                        <FormField
+                            control={form.control}
+                            name="unit"
+                            render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Unidade</FormLabel>
+                                <FormControl>
+                                    <Input placeholder="saco, m³, unidade" {...field} />
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem>
+                            )}
+                        />
+                        <FormField
+                            control={form.control}
+                            name="quantity"
+                            render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Quantidade</FormLabel>
+                                <FormControl>
+                                <Input type="number" placeholder="10" {...field} />
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem>
+                            )}
+                        />
+                        <FormField
+                            control={form.control}
+                            name="unitPrice"
+                            render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Preço Unitário (R$)</FormLabel>
+                                <FormControl>
+                                <Input type="number" step="0.01" placeholder="50.00" {...field} />
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem>
+                            )}
+                        />
+                    </>
+                )}
+
+                <FormField
                     control={form.control}
-                    name="unit"
+                    name="amount"
                     render={({ field }) => (
                     <FormItem>
-                        <FormLabel>Unidade</FormLabel>
+                        <FormLabel>Valor Total (R$)</FormLabel>
                         <FormControl>
-                            <Input placeholder="saco, m³, unidade" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                    </FormItem>
-                    )}
-                />
-                 <FormField
-                    control={form.control}
-                    name="quantity"
-                    render={({ field }) => (
-                    <FormItem>
-                        <FormLabel>Quantidade</FormLabel>
-                        <FormControl>
-                        <Input type="number" placeholder="10" {...field} />
+                        <Input type="number" placeholder="1500.00" {...field} disabled={watchedCategory === 'material'} />
                         </FormControl>
                         <FormMessage />
                     </FormItem>
@@ -197,103 +229,76 @@ export function ExpenseForm({ expense, onFinished, projectId }: ExpenseFormProps
                 />
                 <FormField
                     control={form.control}
-                    name="unitPrice"
+                    name="date"
                     render={({ field }) => (
                     <FormItem>
-                        <FormLabel>Preço Unitário (R$)</FormLabel>
+                        <FormLabel>Data da Despesa</FormLabel>
                         <FormControl>
-                        <Input type="number" step="0.01" placeholder="50.00" {...field} />
+                        <Input type="date" {...field} />
                         </FormControl>
                         <FormMessage />
                     </FormItem>
                     )}
                 />
-            </>
-        )}
+                
+                <FormField
+                control={form.control}
+                name="supplier"
+                render={({ field }) => (
+                    <FormItem>
+                    <FormLabel>Fornecedor</FormLabel>
+                    <FormControl>
+                        <Input placeholder="Casa do Construtor" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                    </FormItem>
+                )}
+                />
 
-        <FormField
-            control={form.control}
-            name="amount"
-            render={({ field }) => (
-            <FormItem>
-                <FormLabel>Valor Total (R$)</FormLabel>
-                <FormControl>
-                <Input type="number" placeholder="1500.00" {...field} disabled={watchedCategory === 'material'} />
-                </FormControl>
-                <FormMessage />
-            </FormItem>
-            )}
-        />
-        <FormField
-            control={form.control}
-            name="date"
-            render={({ field }) => (
-            <FormItem>
-                <FormLabel>Data da Despesa</FormLabel>
-                <FormControl>
-                <Input type="date" {...field} />
-                </FormControl>
-                <FormMessage />
-            </FormItem>
-            )}
-        />
-        
-        <FormField
-          control={form.control}
-          name="supplier"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Fornecedor</FormLabel>
-              <FormControl>
-                <Input placeholder="Casa do Construtor" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        <FormField
-        control={form.control}
-        name="status"
-        render={({ field }) => (
-            <FormItem>
-            <FormLabel>Status do Pagamento</FormLabel>
-            <Select onValueChange={field.onChange} defaultValue={field.value}>
-                <FormControl>
-                <SelectTrigger>
-                    <SelectValue placeholder="Selecione o status" />
-                </SelectTrigger>
-                </FormControl>
-                <SelectContent>
-                {Object.entries(statusLabels).map(([value, label]) => (
-                    <SelectItem key={value} value={value}>
-                    {label}
-                    </SelectItem>
-                ))}
-                </SelectContent>
-            </Select>
-            <FormMessage />
-            </FormItem>
-        )}
-        />
-        
-        <div className="md:col-span-2">
-            <FormField
-            control={form.control}
-            name="receipt"
-            render={({ field }) => (
-                <FormItem>
-                <FormLabel>Comprovante (Descrição/Link)</FormLabel>
-                <FormControl>
-                    <Textarea placeholder="Nota fiscal N-12345 ou link para o arquivo" {...field} />
-                </FormControl>
-                <FormMessage />
-                </FormItem>
-            )}
-            />
-        </div>
-
-        <div className="md:col-span-2">
+                <FormField
+                control={form.control}
+                name="status"
+                render={({ field }) => (
+                    <FormItem>
+                    <FormLabel>Status do Pagamento</FormLabel>
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <FormControl>
+                        <SelectTrigger>
+                            <SelectValue placeholder="Selecione o status" />
+                        </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                        {Object.entries(statusLabels).map(([value, label]) => (
+                            <SelectItem key={value} value={value}>
+                            {label}
+                            </SelectItem>
+                        ))}
+                        </SelectContent>
+                    </Select>
+                    <FormMessage />
+                    </FormItem>
+                )}
+                />
+                
+                <div className="md:col-span-2">
+                    <FormField
+                    control={form.control}
+                    name="receipt"
+                    render={({ field }) => (
+                        <FormItem>
+                        <FormLabel>Comprovante (Descrição/Link)</FormLabel>
+                        <FormControl>
+                            <Textarea placeholder="Nota fiscal N-12345 ou link para o arquivo" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                        </FormItem>
+                    )}
+                    />
+                </div>
+            </div>
+        </ScrollArea>
+        <div className="flex justify-end gap-2 pt-4">
+            <Button type="button" variant="ghost" onClick={onFinished}>Cancelar</Button>
             <Button type="submit">{expense ? 'Salvar Alterações' : 'Registrar Gasto'}</Button>
         </div>
       </form>
