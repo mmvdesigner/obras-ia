@@ -3,12 +3,13 @@ import type { AppData } from './types';
 // NOTE: The user IDs must now match the UIDs from Firebase Authentication
 // After creating users in the Firebase Console, update these IDs accordingly.
 // You can get the UID from the Firebase Console -> Authentication -> Users tab.
+// Example Admin UID: 3iS9qW4aE7Y2Z0Z6j5x7rN8p2oB3
+// Example Manager UID: kM5jH8fG6dC4b2a1L9pOnQwY7zI2
 export const initialData: AppData = {
   users: [
-    // Example: Replace 'FIREBASE_UID_ADMIN' with the actual UID from Firebase Auth
-    { id: '3iS9qW4aE7Y2Z0Z6j5x7rN8p2oB3', name: 'Admin User', email: 'admin@buildwise.com', role: 'Administrator', avatar: 'https://placehold.co/100x100.png' },
-    // Example: Replace 'FIREBASE_UID_MANAGER' with the actual UID from Firebase Auth
-    { id: 'kM5jH8fG6dC4b2a1L9pOnQwY7zI2', name: 'Manager User', email: 'manager@buildwise.com', role: 'Gerente de Obra', avatar: 'https://placehold.co/100x100.png' },
+    // IMPORTANT: Replace the 'id' field with the ACTUAL UID from your Firebase project's Authentication tab.
+    { id: 'CHANGE_ME_TO_ADMIN_UID', name: 'Admin User', email: 'admin@buildwise.com', role: 'Administrator', avatar: 'https://placehold.co/100x100.png' },
+    { id: 'CHANGE_ME_TO_MANAGER_UID', name: 'Manager User', email: 'manager@buildwise.com', role: 'Gerente de Obra', avatar: 'https://placehold.co/100x100.png' },
   ],
   projects: [
     {

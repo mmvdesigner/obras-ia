@@ -18,6 +18,11 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+// This wrapper is needed to break the circular dependency between useAuth and useData
+function AuthProviderWrapper({ children }: { children: ReactNode }) {
+    return <DataProvider>{children}</DataProvider>;
+}
+
 
 function AuthProviderContent({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
@@ -34,8 +39,11 @@ function AuthProviderContent({ children }: { children: ReactNode }) {
         if (userDoc.exists()) {
           setUser({ id: userDoc.id, ...userDoc.data() } as User);
         } else {
-          // Handle case where user exists in Auth but not in Firestore
+          // This can happen if the user is created in Auth but the Firestore doc isn't ready yet.
+          // A more robust solution might involve creating the user doc here if it doesn't exist.
           console.warn("User authenticated with Firebase but not found in Firestore:", firebaseUser.uid);
+          // For now, we sign them out to avoid an inconsistent state.
+          await signOut(auth);
           setUser(null);
         }
       } else {
@@ -49,12 +57,12 @@ function AuthProviderContent({ children }: { children: ReactNode }) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const login = async (email: string, pass: string) => {
+  const login = async (email: string, pass: string): Promise<boolean> => {
     setLoading(true);
     try {
       await signInWithEmailAndPassword(auth, email, pass);
-      // onAuthStateChanged will handle setting the user state.
-      // We can then safely redirect.
+      // onAuthStateChanged will handle setting the user state and loading state.
+      // We can then safely redirect. The useEffect will catch the user change.
       router.push('/dashboard');
       return true;
     } catch (error) {
@@ -73,6 +81,7 @@ function AuthProviderContent({ children }: { children: ReactNode }) {
       console.error("Logout failed:", error);
     } finally {
         // onAuthStateChanged will handle clearing the user state
+        setUser(null);
         setLoading(false);
     }
   };
@@ -98,10 +107,11 @@ function AuthProviderContent({ children }: { children: ReactNode }) {
 export function AuthProvider({ children }: { children: ReactNode }) {
     return (
         <AuthProviderContent>
-            <DataProvider>{children}</DataProvider>
+            <AuthProviderWrapper>{children}</AuthProviderWrapper>
         </AuthProviderContent>
     );
 }
+
 
 export function useAuth() {
   const context = useContext(AuthContext);
