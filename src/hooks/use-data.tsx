@@ -147,10 +147,12 @@ export function DataProvider({ children }: { children: ReactNode }) {
   
     // Update the project document in Firestore
     const projectDocRef = doc(db, 'projects', project.id);
-    await updateDoc(projectDocRef, {
-      ...formData,
-      files: finalFiles
-    });
+    const updatedData = {
+        ...formData,
+        files: finalFiles
+    };
+
+    await updateDoc(projectDocRef, updatedData);
   };
 
   const deleteProject = async (projectId: string) => {
