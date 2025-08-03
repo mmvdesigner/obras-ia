@@ -44,7 +44,7 @@ export function ProjectForm({ project, onFinished }: ProjectFormProps) {
   // State for newly added files (from file input)
   const [newFiles, setNewFiles] = useState<File[]>([]);
   // State for paths of existing files to be deleted
-  const [filesToDelete, setFilesToDelete] = useState<string[]>([]);
+  const [filesToDelete, setFilesToDelete] = useState<ProjectFile[]>([]);
   
   const defaultValues: Partial<ProjectFormValues> = project
     ? {
@@ -72,7 +72,7 @@ export function ProjectForm({ project, onFinished }: ProjectFormProps) {
     setNewFiles([]);
     setFilesToDelete([]);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [project, form.reset]);
+  }, [project, onFinished]);
 
 
   const onSubmit = async (data: ProjectFormValues) => {
@@ -113,7 +113,7 @@ export function ProjectForm({ project, onFinished }: ProjectFormProps) {
     // Remove from the display list
     setExistingFiles(prev => prev.filter(file => file.path !== fileToRemove.path));
     // Add its path to the deletion list
-    setFilesToDelete(prev => [...prev, fileToRemove.path]);
+    setFilesToDelete(prev => [...prev, fileToRemove]);
   };
 
   return (
