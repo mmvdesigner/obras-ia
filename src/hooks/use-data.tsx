@@ -145,13 +145,14 @@ export function DataProvider({ children }: { children: ReactNode }) {
     
     const finalFiles = [...remainingOldFiles, ...uploadedFiles];
   
-    // Update the project document in Firestore
-    const projectDocRef = doc(db, 'projects', project.id);
+    // Create a clean object with the form data and the final file list
     const updatedData = {
         ...formData,
         files: finalFiles
     };
-
+  
+    // Update the project document in Firestore
+    const projectDocRef = doc(db, 'projects', project.id);
     await updateDoc(projectDocRef, updatedData);
   };
 
