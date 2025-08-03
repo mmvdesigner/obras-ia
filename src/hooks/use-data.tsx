@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useCallback } from 'react';
 import { db } from '@/lib/firebase';
-import { collection, onSnapshot, addDoc, updateDoc, deleteDoc, doc, writeBatch, getDocs, query, setDoc, where } from 'firebase/firestore';
+import { collection, onSnapshot, addDoc, updateDoc, deleteDoc, doc, writeBatch, getDocs, query, setDoc, where, getDoc } from 'firebase/firestore';
 import { initialData } from '@/lib/data';
 import type { AppData, Project, Employee, Expense, Task, InventoryItem, User } from '@/lib/types';
 
@@ -48,10 +48,13 @@ export function DataProvider({ children }: { children: ReactNode }) {
         console.log("Database is empty. Seeding with initial data...");
         const batch = writeBatch(db);
         
-        // Seed all collections from initialData
+        // Seed all collections from initialData EXCEPT USERS
+        // Users will be handled by the auth flow to ensure IDs are correct.
         (Object.keys(initialData) as Array<keyof AppData>).forEach(key => {
+            if (key === 'users') return; // Skip users collection
             initialData[key].forEach((item: any) => {
-                const docRef = doc(db, key, item.id);
+                // Use the hardcoded ID from initialData for consistent seeding
+                const docRef = item.id ? doc(db, key, item.id) : doc(collection(db, key));
                 const {id, ...itemData} = item;
                 batch.set(docRef, itemData);
             });
@@ -189,7 +192,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   const value: DataContextType = {
     data,
-    loading: loading, 
+    loading, 
     addProject,
     updateProject,
     deleteProject,

@@ -17,24 +17,40 @@ import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 import { useAuth } from '@/hooks/use-auth';
 import Link from 'next/link';
+import { Skeleton } from '@/components/ui/skeleton';
+
+function DashboardSkeleton() {
+    return (
+        <div className="flex h-screen w-screen items-center justify-center">
+            <div className="flex flex-col items-center gap-4">
+                <Skeleton className="h-12 w-12 rounded-full" />
+                <div className="space-y-2">
+                    <Skeleton className="h-4 w-[250px]" />
+                    <Skeleton className="h-4 w-[200px]" />
+                </div>
+            </div>
+        </div>
+    );
+}
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const { user, loading: authLoading } = useAuth();
+  const { loading: dataLoading } = useData();
   const router = useRouter();
 
+  const isLoading = authLoading || dataLoading;
+
   useEffect(() => {
-    // If auth has finished loading and there's still no user, redirect to login.
-    if (!authLoading && !user) {
+    if (!isLoading && !user) {
       router.push('/login');
     }
-  }, [user, authLoading, router]);
+  }, [user, isLoading, router]);
 
-  if (authLoading) {
-    return <div className="flex h-screen w-screen items-center justify-center">Carregando...</div>;
+  if (isLoading) {
+    return <DashboardSkeleton />;
   }
   
   if (!user) {
-    // This can be a brief flash while redirecting, or a fallback.
     return null;
   }
   
