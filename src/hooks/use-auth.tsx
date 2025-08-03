@@ -29,31 +29,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (firebaseUser) {
         setLoading(true);
         const userDocRef = doc(db, 'users', firebaseUser.uid);
-        let userDoc = await getDoc(userDocRef);
+        const userDoc = await getDoc(userDocRef);
 
-        // If user doc doesn't exist, create it (first login)
-        if (!userDoc.exists()) {
+        if (userDoc.exists()) {
+          const userData = { id: userDoc.id, ...userDoc.data() } as User;
+          setUser(userData);
+        } else {
+          // User is authenticated in Firebase, but no profile in Firestore.
+          // Let's create one.
+          console.log(`User with UID ${firebaseUser.uid} not found in Firestore. Creating profile...`);
           const seedUser = initialData.users.find(u => u.id === firebaseUser.uid);
           if (seedUser) {
             const { id, ...userData } = seedUser;
             await setDoc(userDocRef, userData);
-            userDoc = await getDoc(userDocRef); // Re-fetch doc
+            const newUserDoc = await getDoc(userDocRef);
+            setUser({ id: newUserDoc.id, ...newUserDoc.data() } as User);
+            console.log("User profile created successfully.");
           } else {
-             console.error("Authenticated user not in seed data. Logging out.");
+             console.error(`Authenticated user with UID ${firebaseUser.uid} not found in seed data. Logging out.`);
              await signOut(auth);
              setUser(null);
-             setLoading(false);
-             return;
           }
         }
-        
-        const userData = { id: userDoc.id, ...userDoc.data() } as User;
-        setUser(userData);
-        setLoading(false);
       } else {
         setUser(null);
-        setLoading(false);
       }
+      setLoading(false);
     });
 
     return () => unsubscribe();
@@ -63,7 +64,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const login = async (email: string, pass: string): Promise<boolean> => {
     try {
       await signInWithEmailAndPassword(auth, email, pass);
-      // onAuthStateChanged will handle everything else
+      // onAuthStateChanged will handle setting the user state and profile creation
       return true;
     } catch (error) {
       console.error("Login failed:", error);
@@ -74,11 +75,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = async () => {
     try {
       await signOut(auth);
+      // onAuthStateChanged will set user to null
       router.push('/login');
     } catch (error) {
       console.error("Logout failed:", error);
-    } finally {
-      setUser(null);
     }
   };
 

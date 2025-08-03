@@ -39,6 +39,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
   });
   const [loading, setLoading] = useState(true);
 
+  // This function seeds the database with initial project data if it's empty.
+  // It runs independently of user authentication.
   const seedDatabase = useCallback(async () => {
     console.log("Checking if database needs seeding...");
     const projectsQuery = query(collection(db, "projects"));
@@ -85,10 +87,11 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
 
   useEffect(() => {
-    // Only proceed if auth has finished loading and we have a user
-    if (!authLoading && user) {
-      seedDatabase(); // Check if the rest of the DB needs seeding
+    // We can seed the DB as soon as the provider loads.
+    seedDatabase();
 
+    // Only set up data listeners if auth is done and we have a user.
+    if (!authLoading && user) {
       const collections: (keyof AppData)[] = ['projects', 'employees', 'expenses', 'tasks', 'inventory', 'users'];
       const unsubscribes = collections.map(collectionName => {
         return onSnapshot(collection(db, collectionName), (snapshot) => {
@@ -106,6 +109,14 @@ export function DataProvider({ children }: { children: ReactNode }) {
     } else if (!authLoading && !user) {
       // If auth is done and there's no user, stop loading.
       setLoading(false);
+      setData({
+        users: [],
+        projects: [],
+        employees: [],
+        expenses: [],
+        tasks: [],
+        inventory: [],
+      })
     }
   }, [user, authLoading, seedDatabase]);
 
