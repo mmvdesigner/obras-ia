@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useCallback } from 'react';
 import { db, storage } from '@/lib/firebase';
-import { collection, onSnapshot, addDoc, updateDoc, deleteDoc, doc, writeBatch, getDocs, query, setDoc } from 'firebase/firestore';
+import { collection, onSnapshot, addDoc, updateDoc, deleteDoc, doc, writeBatch, getDocs, query, setDoc, getDoc } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
 import { initialData } from '@/lib/data';
 import type { AppData, Project, Employee, Expense, Task, InventoryItem, User, ProjectFile } from '@/lib/types';
@@ -12,7 +12,7 @@ interface DataContextType {
   data: AppData;
   loading: boolean;
   addProject: (project: Omit<Project, 'id' | 'files'>, files: File[]) => Promise<void>;
-  updateProject: (projectId: string, originalFiles: ProjectFile[], formData: Omit<Project, 'id' | 'files'>, newFiles: File[], filesToDelete: ProjectFile[]) => Promise<void>;
+  updateProject: (projectId: string, formData: Omit<Project, 'id' | 'files'>, finalFiles: (File | ProjectFile)[]) => Promise<void>;
   deleteProject: (projectId: string) => Promise<void>;
   addEmployee: (employee: Omit<Employee, 'id'>) => Promise<void>;
   updateEmployee: (employee: Employee) => Promise<void>;
@@ -102,7 +102,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   const deleteFile = async (filePath: string) => {
     if (!filePath) {
-        console.error("Invalid file path provided for deletion: path is empty");
+        console.warn("Attempted to delete a file with an empty path.");
         return;
     }
     try {
@@ -110,8 +110,6 @@ export function DataProvider({ children }: { children: ReactNode }) {
         await deleteObject(storageRef);
     } catch (error) {
         console.error("Failed to delete file from storage:", error);
-        // We can choose to not re-throw the error to allow the update to proceed
-        // if a file is already deleted, for example.
     }
   };
 
@@ -137,30 +135,48 @@ export function DataProvider({ children }: { children: ReactNode }) {
     await setDoc(projectRef, { ...projectData, files: uploadedFiles });
   };
   
-  const updateProject = async (projectId: string, originalFiles: ProjectFile[], formData: Omit<Project, 'id' | 'files'>, newFilesToUpload: File[], filesToDelete: ProjectFile[]) => {
+  const updateProject = async (projectId: string, formData: Omit<Project, 'id' | 'files'>, finalFilesState: (File | ProjectFile)[]) => {
     const projectDocRef = doc(db, 'projects', projectId);
     
-    // 1. Upload new files to Storage
-    const newUploadedFiles = await Promise.all(
-      newFilesToUpload.map(file => uploadFile(file, projectId))
+    // 1. Get the current state of the project from Firestore to compare file lists
+    const projectSnapshot = await getDoc(projectDocRef);
+    if (!projectSnapshot.exists()) {
+        throw new Error("Project not found!");
+    }
+    const originalFiles: ProjectFile[] = projectSnapshot.data().files || [];
+
+    // 2. Identify files to delete by comparing original and final lists
+    const finalFilePaths = finalFilesState
+        .map(f => (f instanceof File) ? null : f.path)
+        .filter(Boolean);
+        
+    const filesToDelete = originalFiles.filter(
+        (origFile) => !finalFilePaths.includes(origFile.path)
     );
-  
-    // 2. Delete files from Storage that were marked for deletion
-    // We only need the paths for deletion.
-    const filesToDeletePaths = filesToDelete.map(f => f.path).filter(path => !!path);
-    await Promise.all(filesToDeletePaths.map(path => deleteFile(path)));
-  
-    // 3. Determine the final list of files for Firestore
-    const remainingOldFiles = originalFiles.filter(
-      (originalFile) => !filesToDeletePaths.includes(originalFile.path)
+    
+    // 3. Identify new files to upload
+    const newFilesToUpload = finalFilesState.filter(
+        (f): f is File => f instanceof File
     );
-    // Combine the remaining old files with the new ones
-    const finalFiles = [...remainingOldFiles, ...newUploadedFiles];
-  
-    // 4. Create the final object and update Firestore
+
+    // 4. Perform Storage operations
+    const deletePromises = filesToDelete.map(f => deleteFile(f.path));
+    const uploadPromises = newFilesToUpload.map(f => uploadFile(f, projectId));
+    
+    await Promise.all(deletePromises);
+    const newUploadedFiles = await Promise.all(uploadPromises);
+
+    // 5. Construct the final list of files for Firestore
+    const existingFiles = finalFilesState.filter(
+        (f): f is ProjectFile => !(f instanceof File)
+    );
+    
+    const finalFilesForFirestore = [...existingFiles, ...newUploadedFiles];
+
+    // 6. Update Firestore
     const dataToUpdate = {
       ...formData,
-      files: finalFiles,
+      files: finalFilesForFirestore,
     };
   
     await updateDoc(projectDocRef, dataToUpdate);

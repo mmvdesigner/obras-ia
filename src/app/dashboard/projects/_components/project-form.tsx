@@ -39,13 +39,9 @@ export function ProjectForm({ project, onFinished }: ProjectFormProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // State for files already uploaded (from `project.files`)
-  const [existingFiles, setExistingFiles] = useState<ProjectFile[]>([]);
-  // State for newly added files (from file input)
-  const [newFiles, setNewFiles] = useState<File[]>([]);
-  // State for paths of existing files to be deleted
-  const [filesToDelete, setFilesToDelete] = useState<ProjectFile[]>([]);
-  
+  // Unified state for files. It can hold existing ProjectFile objects or new File objects.
+  const [currentFiles, setCurrentFiles] = useState<(ProjectFile | File)[]>([]);
+
   const defaultValues: Partial<ProjectFormValues> = project
     ? {
         ...project,
@@ -60,18 +56,15 @@ export function ProjectForm({ project, onFinished }: ProjectFormProps) {
     resolver: zodResolver(projectSchema),
     defaultValues,
   });
-  
+
   useEffect(() => {
     form.reset(defaultValues);
-     if (project?.files) {
-      setExistingFiles(project.files);
+    if (project?.files) {
+      setCurrentFiles(project.files);
     } else {
-      setExistingFiles([]);
+      setCurrentFiles([]);
     }
-    // Always clear new files and deletion list when the form is opened
-    setNewFiles([]);
-    setFilesToDelete([]);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [project, onFinished]);
 
 
@@ -79,42 +72,36 @@ export function ProjectForm({ project, onFinished }: ProjectFormProps) {
     setIsSubmitting(true);
     try {
       if (project) {
-        // Pass the original project, the form data, new files, and paths of files to delete
-        await updateProject(project.id, project.files || [], data, newFiles, filesToDelete);
+        await updateProject(project.id, data, currentFiles);
         toast({ title: 'Obra atualizada!', description: 'Os dados da obra foram salvos.' });
       } else {
+        const newFiles = currentFiles.filter((f): f is File => f instanceof File);
         await addProject(data, newFiles);
         toast({ title: 'Obra criada!', description: 'A nova obra foi adicionada com sucesso.' });
       }
       onFinished();
     } catch (error) {
       console.error("Failed to save project:", error);
-      toast({ variant: 'destructive', title: 'Erro!', description: 'Não foi possível salvar a obra.' });
+      toast({ variant: 'destructive', title: 'Erro!', description: `Não foi possível salvar a obra: ${error instanceof Error ? error.message : String(error)}` });
     } finally {
       setIsSubmitting(false);
     }
   };
-  
+
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
     if (files) {
-      setNewFiles(prev => [...prev, ...Array.from(files)]);
+      setCurrentFiles(prev => [...prev, ...Array.from(files)]);
     }
     if (event.target) {
       event.target.value = ''; // Reset the input to allow re-uploading the same file
     }
   };
 
-  const handleRemoveNewFile = (indexToRemove: number) => {
-    setNewFiles(prev => prev.filter((_, index) => index !== indexToRemove));
+  const handleRemoveFile = (fileToRemove: ProjectFile | File) => {
+    setCurrentFiles(prev => prev.filter(file => file !== fileToRemove));
   };
-  
-  const handleRemoveExistingFile = (fileToRemove: ProjectFile) => {
-    // Remove from the display list
-    setExistingFiles(prev => prev.filter(file => file.path !== fileToRemove.path));
-    // Add its path to the deletion list
-    setFilesToDelete(prev => [...prev, fileToRemove]);
-  };
+
 
   return (
     <Form {...form}>
@@ -244,30 +231,24 @@ export function ProjectForm({ project, onFinished }: ProjectFormProps) {
               <FormItem>
                 <FormLabel>Documentos da Obra</FormLabel>
                  <div className="space-y-2 mt-2">
-                    {/* List existing files */}
-                    {existingFiles.map((file, index) => (
-                      <div key={`${file.path}-${index}`} className="flex items-center justify-between rounded-md border p-2">
-                        <div className="flex items-center gap-2 overflow-hidden">
-                          <FileText className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                          <span className="text-sm truncate" title={file.name}>{file.name}</span>
-                        </div>
-                        <Button type="button" variant="ghost" size="icon" onClick={() => handleRemoveExistingFile(file)}>
-                          <Trash2 className="h-4 w-4 text-destructive" />
-                        </Button>
-                      </div>
-                    ))}
-                    {/* List new files to be uploaded */}
-                    {newFiles.map((file, index) => (
-                       <div key={`${file.name}-${index}`} className="flex items-center justify-between rounded-md border border-dashed p-2">
-                          <div className="flex items-center gap-2 overflow-hidden">
-                              <FileText className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                              <span className="text-sm italic truncate" title={file.name}>{file.name} (novo)</span>
-                          </div>
-                          <Button type="button" variant="ghost" size="icon" onClick={() => handleRemoveNewFile(index)}>
-                              <Trash2 className="h-4 w-4 text-destructive" />
-                          </Button>
-                      </div>
-                    ))}
+                    {currentFiles.map((file, index) => {
+                        const isNew = file instanceof File;
+                        const key = isNew ? `${file.name}-${index}` : file.path;
+                        const name = isNew ? `${file.name} (novo)` : file.name;
+                        const title = isNew ? file.name : file.name;
+
+                        return (
+                            <div key={key} className={`flex items-center justify-between rounded-md border p-2 ${isNew ? 'border-dashed' : ''}`}>
+                                <div className="flex items-center gap-2 overflow-hidden">
+                                    <FileText className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                                    <span className={`text-sm truncate ${isNew ? 'italic' : ''}`} title={title}>{name}</span>
+                                </div>
+                                <Button type="button" variant="ghost" size="icon" onClick={() => handleRemoveFile(file)}>
+                                    <Trash2 className="h-4 w-4 text-destructive" />
+                                </Button>
+                            </div>
+                        )
+                    })}
                   </div>
                 <div>
                   <input 
