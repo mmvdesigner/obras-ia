@@ -25,8 +25,8 @@ const profileFormSchema = z.object({
 type ProfileFormValues = z.infer<typeof profileFormSchema>;
 
 function SettingsPageContent() {
-    const { user, loading: authLoading, updateUser } = useAuth();
-    const { data, loading: dataLoading } = useData();
+    const { user, loading: authLoading } = useAuth();
+    const { data, loading: dataLoading, updateUser } = useData();
     const router = useRouter();
     const { toast } = useToast();
 

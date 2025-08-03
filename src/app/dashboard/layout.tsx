@@ -20,19 +20,16 @@ import Link from 'next/link';
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const { user, loading: authLoading } = useAuth();
-  const { loading: dataLoading } = useData();
   const router = useRouter();
 
-  const isLoading = authLoading || dataLoading;
-
   useEffect(() => {
-    // If both hooks are done loading and there's still no user, redirect to login.
+    // If auth has finished loading and there's still no user, redirect to login.
     if (!authLoading && !user) {
       router.push('/login');
     }
   }, [user, authLoading, router]);
 
-  if (isLoading) {
+  if (authLoading) {
     return <div className="flex h-screen w-screen items-center justify-center">Carregando...</div>;
   }
   

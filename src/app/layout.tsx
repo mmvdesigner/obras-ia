@@ -10,6 +10,9 @@ const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 export const metadata: Metadata = {
   title: "BuildWise",
   description: "Responsive web application for personal management of civil construction works.",
+  icons: {
+    icon: [],
+  },
 };
 
 export default function RootLayout({
@@ -28,12 +31,12 @@ export default function RootLayout({
         />
       </head>
       <body className={`${inter.variable} font-body antialiased h-full`}>
-        <AuthProvider>
-          <DataProvider>
+        <DataProvider>
+          <AuthProvider>
             {children}
             <Toaster />
-          </DataProvider>
-        </AuthProvider>
+          </AuthProvider>
+        </DataProvider>
       </body>
     </html>
   );

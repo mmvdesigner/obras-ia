@@ -2,63 +2,31 @@
 
 import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import type { User } from '@/lib/types';
+import type { User as AppUser } from '@/lib/types';
 import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut, User as FirebaseUser } from 'firebase/auth';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
-import { initialData } from '@/lib/data';
+import { useData } from './use-data';
 
 interface AuthContextType {
-  user: User | null;
+  user: AppUser | null;
+  firebaseUser: FirebaseUser | null;
   loading: boolean;
   login: (email: string, pass: string) => Promise<boolean>;
   logout: () => void;
-  updateUser: (user: User) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
+  const [firebaseUser, setFirebaseUser] = useState<FirebaseUser | null>(null);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
+  const { data: appData, loading: dataLoading } = useData();
 
+  // This effect handles changes in Firebase's authentication state
   useEffect(() => {
     const auth = getAuth();
-    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser: FirebaseUser | null) => {
-      if (firebaseUser) {
-        setLoading(true);
-        const userDocRef = doc(db, 'users', firebaseUser.uid);
-        const userDoc = await getDoc(userDocRef);
-
-        if (userDoc.exists()) {
-          const userData = { id: userDoc.id, ...userDoc.data() } as User;
-          setUser(userData);
-        } else {
-          // User is authenticated, but no profile in Firestore. Let's create one.
-          console.log(`User with UID ${firebaseUser.uid} not found in Firestore. Attempting to create profile...`);
-          const seedUser = initialData.users.find(u => u.id === firebaseUser.uid);
-          if (seedUser) {
-            const { id, ...userData } = seedUser;
-            try {
-              await setDoc(userDocRef, userData);
-              const newUserDoc = await getDoc(userDocRef);
-              setUser({ id: newUserDoc.id, ...newUserDoc.data() } as User);
-              console.log("User profile created successfully.");
-            } catch (e) {
-                console.error("Error creating user profile in Firestore: ", e);
-                await signOut(auth); // Log out if profile creation fails
-                setUser(null);
-            }
-          } else {
-             console.error(`Authenticated user with UID ${firebaseUser.uid} not found in seed data. Logging out.`);
-             await signOut(auth);
-             setUser(null);
-          }
-        }
-      } else {
-        setUser(null);
-      }
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      setFirebaseUser(user);
       setLoading(false);
     });
 
@@ -69,7 +37,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const auth = getAuth();
     try {
       await signInWithEmailAndPassword(auth, email, pass);
-      // onAuthStateChanged will handle setting the user state and profile creation
       return true;
     } catch (error) {
       console.error("Login failed:", error);
@@ -87,23 +54,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const updateUser = useCallback(async (updatedUser: User) => {
-    if (!updatedUser.id) {
-        console.error("Cannot update user without an ID.");
-        return;
-    }
-     try {
-      const { id, ...userData } = updatedUser;
-      const userDocRef = doc(db, 'users', id);
-      await setDoc(userDocRef, userData, { merge: true });
-      setUser(updatedUser);
-    } catch (error) {
-      console.error("Failed to update user:", error);
-    }
-  }, []);
+  // Determine the app user profile based on the firebase user's UID
+  const user = firebaseUser && !dataLoading 
+    ? appData.users.find(u => u.id === firebaseUser.uid) || null 
+    : null;
 
   return (
-    <AuthContext.Provider value={{ user, login, logout, loading, updateUser }}>
+    <AuthContext.Provider value={{ user, firebaseUser, login, logout, loading: loading || dataLoading }}>
       {children}
     </AuthContext.Provider>
   );
