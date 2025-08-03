@@ -102,6 +102,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   const deleteFile = async (file: ProjectFile) => {
     if (!file?.path) {
+        console.error("Invalid file path provided for deletion.");
         return;
     }
     const storageRef = ref(storage, file.path);
@@ -145,14 +146,14 @@ export function DataProvider({ children }: { children: ReactNode }) {
     const finalFiles = [...remainingOldFiles, ...uploadedFiles];
   
     // 4. Create the final object to update in Firestore, combining form data and the final file list
-    const updatedData = {
+    const dataToUpdate = {
         ...formData,
         files: finalFiles 
     };
   
     // 5. Update the project document in Firestore
     const projectDocRef = doc(db, 'projects', project.id);
-    await updateDoc(projectDocRef, updatedData);
+    await updateDoc(projectDocRef, dataToUpdate);
   };
 
   const deleteProject = async (projectId: string) => {
