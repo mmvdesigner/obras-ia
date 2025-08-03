@@ -13,7 +13,7 @@ import { useData } from '@/hooks/use-data';
 import { useToast } from '@/hooks/use-toast';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { FileText, Trash2, Upload, Loader2 } from 'lucide-react';
-import { useRef, useState, useEffect } from 'react';
+import { useRef, useState, useEffect, useCallback } from 'react';
 
 const projectSchema = z.object({
   name: z.string().min(1, 'Nome é obrigatório'),
@@ -39,7 +39,7 @@ export function ProjectForm({ project, onFinished }: ProjectFormProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Unified state for files. It can hold existing ProjectFile objects or new File objects.
+  // This state holds the "final" list of files. It can contain existing ProjectFile objects or new File objects.
   const [currentFiles, setCurrentFiles] = useState<(ProjectFile | File)[]>([]);
 
   const defaultValues: Partial<ProjectFormValues> = project
@@ -57,6 +57,7 @@ export function ProjectForm({ project, onFinished }: ProjectFormProps) {
     defaultValues,
   });
 
+  // Effect to reset form and files when the project prop changes (e.g., opening a new project in the dialog)
   useEffect(() => {
     form.reset(defaultValues);
     if (project?.files) {
@@ -72,9 +73,11 @@ export function ProjectForm({ project, onFinished }: ProjectFormProps) {
     setIsSubmitting(true);
     try {
       if (project) {
+        // We now pass the final, desired state of files to the update function.
         await updateProject(project.id, data, currentFiles);
         toast({ title: 'Obra atualizada!', description: 'Os dados da obra foram salvos.' });
       } else {
+        // For new projects, we only have new files to upload.
         const newFiles = currentFiles.filter((f): f is File => f instanceof File);
         await addProject(data, newFiles);
         toast({ title: 'Obra criada!', description: 'A nova obra foi adicionada com sucesso.' });
@@ -91,13 +94,16 @@ export function ProjectForm({ project, onFinished }: ProjectFormProps) {
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
     if (files) {
+      // Append new files to the existing list
       setCurrentFiles(prev => [...prev, ...Array.from(files)]);
     }
+    // Reset the input to allow re-uploading the same file if needed
     if (event.target) {
-      event.target.value = ''; // Reset the input to allow re-uploading the same file
+      event.target.value = ''; 
     }
   };
-
+  
+  // This function now simply removes the file from the "currentFiles" state.
   const handleRemoveFile = (fileToRemove: ProjectFile | File) => {
     setCurrentFiles(prev => prev.filter(file => file !== fileToRemove));
   };
