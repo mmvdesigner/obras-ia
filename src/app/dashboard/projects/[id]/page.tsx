@@ -2,7 +2,7 @@
 import {useRouter, useParams} from 'next/navigation';
 import React from 'react';
 import {useData} from '@/hooks/use-data';
-import {ArrowLeft, Building2, CalendarClock, DollarSign, Users, Package, FileText} from 'lucide-react';
+import {ArrowLeft, Building2, CalendarClock, DollarSign, Users, Package, FileText, Download} from 'lucide-react';
 
 import {Button} from '@/components/ui/button';
 import {Card, CardContent, CardDescription, CardHeader, CardTitle} from '@/components/ui/card';
@@ -104,10 +104,18 @@ export default function ProjectDetailsPage() {
                   <h3 className="font-medium">Documentos</h3>
                   {project.files && project.files.length > 0 ? (
                     <ul className="mt-2 space-y-2">
-                      {project.files.map((file, index) => (
-                        <li key={index} className="flex items-center gap-2 text-sm text-muted-foreground">
-                          <FileText className="h-4 w-4" />
-                          <span>{file}</span>
+                      {project.files.map((file) => (
+                        <li key={file.path} className="flex items-center justify-between gap-2 text-sm text-muted-foreground border p-2 rounded-md">
+                          <div className="flex items-center gap-2">
+                            <FileText className="h-4 w-4" />
+                            <span>{file.name}</span>
+                          </div>
+                          <Button asChild variant="outline" size="sm">
+                             <a href={file.url} target="_blank" rel="noopener noreferrer" download={file.name}>
+                                <Download className="mr-2 h-4 w-4" />
+                                Baixar
+                             </a>
+                          </Button>
                         </li>
                       ))}
                     </ul>

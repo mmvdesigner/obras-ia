@@ -8,12 +8,13 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import type { Project } from '@/lib/types';
+import type { Project, ProjectFile } from '@/lib/types';
 import { useData } from '@/hooks/use-data';
 import { useToast } from '@/hooks/use-toast';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { FileText, Trash2, Upload } from 'lucide-react';
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
+import { Loader2 } from 'lucide-react';
 
 const projectSchema = z.object({
   name: z.string().min(1, 'Nome é obrigatório'),
@@ -24,7 +25,6 @@ const projectSchema = z.object({
   status: z.enum(['planejamento', 'em andamento', 'pausada', 'concluída']),
   totalBudget: z.coerce.number().min(0, 'Orçamento deve ser positivo'),
   description: z.string().optional(),
-  files: z.array(z.string()).optional(),
 });
 
 type ProjectFormValues = z.infer<typeof projectSchema>;
@@ -38,17 +38,22 @@ export function ProjectForm({ project, onFinished }: ProjectFormProps) {
   const { addProject, updateProject } = useData();
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Separate states for existing files, new files, and files to delete
+  const [existingFiles, setExistingFiles] = useState<ProjectFile[]>(project?.files || []);
+  const [newFiles, setNewFiles] = useState<File[]>([]);
+  const [filesToDelete, setFilesToDelete] = useState<ProjectFile[]>([]);
+
 
   const defaultValues: Partial<ProjectFormValues> = project
     ? {
         ...project,
         startDate: project.startDate.split('T')[0],
         endDate: project.endDate.split('T')[0],
-        files: project.files || [],
       }
     : {
         status: 'planejamento',
-        files: [],
       };
 
   const form = useForm<ProjectFormValues>({
@@ -56,37 +61,49 @@ export function ProjectForm({ project, onFinished }: ProjectFormProps) {
     defaultValues,
   });
 
-  const { fields, append, remove } = useFieldArray({
-    control: form.control,
-    name: "files",
-  });
-
-  const onSubmit = (data: ProjectFormValues) => {
-    if (project) {
-      updateProject({ ...project, ...data });
-      toast({ title: 'Obra atualizada!', description: 'Os dados da obra foram salvos.' });
-    } else {
-      addProject(data as Omit<Project, 'id'>);
-      toast({ title: 'Obra criada!', description: 'A nova obra foi adicionada com sucesso.' });
+  const onSubmit = async (data: ProjectFormValues) => {
+    setIsSubmitting(true);
+    try {
+      if (project) {
+        // We need to pass the full project object, including existing files
+        const projectDataWithFiles = {
+          ...project,
+          ...data,
+          files: existingFiles, // Pass the current state of existing files
+        };
+        await updateProject(projectDataWithFiles, newFiles, filesToDelete);
+        toast({ title: 'Obra atualizada!', description: 'Os dados da obra foram salvos.' });
+      } else {
+        await addProject(data, newFiles);
+        toast({ title: 'Obra criada!', description: 'A nova obra foi adicionada com sucesso.' });
+      }
+      onFinished();
+    } catch (error) {
+      console.error("Failed to save project:", error);
+      toast({ variant: 'destructive', title: 'Erro!', description: 'Não foi possível salvar a obra.' });
+    } finally {
+      setIsSubmitting(false);
     }
-    onFinished();
   };
   
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file) {
-      append(file.name);
+    const files = event.target.files;
+    if (files) {
+      setNewFiles(prev => [...prev, ...Array.from(files)]);
     }
-    // Reset file input to allow selecting the same file again
-    if(event.target) {
-        event.target.value = '';
+    if (event.target) {
+      event.target.value = '';
     }
   };
 
-  const handleRemoveFile = (index: number) => {
-    remove(index);
+  const handleRemoveNewFile = (index: number) => {
+    setNewFiles(prev => prev.filter((_, i) => i !== index));
   };
-
+  
+  const handleRemoveExistingFile = (fileToRemove: ProjectFile) => {
+    setExistingFiles(prev => prev.filter(file => file.path !== fileToRemove.path));
+    setFilesToDelete(prev => [...prev, fileToRemove]);
+  };
 
   return (
     <Form {...form}>
@@ -214,37 +231,54 @@ export function ProjectForm({ project, onFinished }: ProjectFormProps) {
             
             <FormItem>
               <FormLabel>Documentos da Obra</FormLabel>
-              <div>
-                <input 
-                  type="file" 
-                  ref={fileInputRef} 
-                  onChange={handleFileChange}
-                  className="hidden" 
-                />
-                <Button type="button" variant="outline" onClick={() => fileInputRef.current?.click()}>
-                    <Upload className="mr-2 h-4 w-4" /> Carregar Arquivo
-                </Button>
-              </div>
-                <div className="space-y-2 mt-2">
-                  {fields.map((field, index) => (
-                    <div key={field.id} className="flex items-center justify-between rounded-md border p-2">
+               <div className="space-y-2 mt-2">
+                  {/* List existing files */}
+                  {existingFiles.map((file) => (
+                    <div key={file.path} className="flex items-center justify-between rounded-md border p-2">
+                      <div className="flex items-center gap-2">
+                        <FileText className="h-4 w-4 text-muted-foreground" />
+                        <span className="text-sm">{file.name}</span>
+                      </div>
+                      <Button type="button" variant="ghost" size="icon" onClick={() => handleRemoveExistingFile(file)}>
+                        <Trash2 className="h-4 w-4 text-destructive" />
+                      </Button>
+                    </div>
+                  ))}
+                  {/* List new files to be uploaded */}
+                  {newFiles.map((file, index) => (
+                     <div key={index} className="flex items-center justify-between rounded-md border border-dashed p-2">
                         <div className="flex items-center gap-2">
                             <FileText className="h-4 w-4 text-muted-foreground" />
-                            <span className="text-sm">{field.value}</span>
+                            <span className="text-sm italic">{file.name} (novo)</span>
                         </div>
-                        <Button type="button" variant="ghost" size="icon" onClick={() => handleRemoveFile(index)}>
+                        <Button type="button" variant="ghost" size="icon" onClick={() => handleRemoveNewFile(index)}>
                             <Trash2 className="h-4 w-4 text-destructive" />
                         </Button>
                     </div>
                   ))}
                 </div>
+              <div>
+                <input 
+                  type="file" 
+                  ref={fileInputRef} 
+                  onChange={handleFileChange}
+                  className="hidden"
+                  multiple
+                />
+                <Button type="button" variant="outline" onClick={() => fileInputRef.current?.click()} className="mt-2">
+                    <Upload className="mr-2 h-4 w-4" /> Carregar Arquivos
+                </Button>
+              </div>
               <FormMessage />
             </FormItem>
           </div>
         </ScrollArea>
         <div className="flex justify-end pt-4 gap-2">
-            <Button type="button" variant="ghost" onClick={onFinished}>Cancelar</Button>
-            <Button type="submit">{project ? 'Salvar Alterações' : 'Criar Obra'}</Button>
+            <Button type="button" variant="ghost" onClick={onFinished} disabled={isSubmitting}>Cancelar</Button>
+            <Button type="submit" disabled={isSubmitting}>
+              {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {isSubmitting ? 'Salvando...' : (project ? 'Salvar Alterações' : 'Criar Obra')}
+            </Button>
         </div>
       </form>
     </Form>

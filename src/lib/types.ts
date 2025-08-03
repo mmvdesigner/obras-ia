@@ -10,6 +10,11 @@ export interface User {
 
 export type ProjectStatus = 'planejamento' | 'em andamento' | 'pausada' | 'concluída';
 
+export interface ProjectFile {
+  name: string;
+  url: string;
+  path: string;
+}
 export interface Project {
   id: string;
   name: string;
@@ -20,7 +25,7 @@ export interface Project {
   status: ProjectStatus;
   totalBudget: number;
   description: string;
-  files: string[];
+  files: ProjectFile[];
 }
 
 export interface Employee {

@@ -21,7 +21,7 @@ export const initialData: AppData = {
       status: 'em andamento',
       totalBudget: 500000,
       description: 'Construção de um edifício residencial de 10 andares.',
-      files: ['planta_baixa.pdf', 'alvara.pdf'],
+      files: [],
     },
     {
       id: 'proj-2',
@@ -45,7 +45,7 @@ export const initialData: AppData = {
         status: 'concluída',
         totalBudget: 150000,
         description: 'Reforma completa do 5º andar do prédio comercial.',
-        files: ['memorial_descritivo.docx'],
+        files: [],
     }
   ],
   employees: [

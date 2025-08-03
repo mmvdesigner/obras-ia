@@ -31,12 +31,12 @@ export default function RootLayout({
         />
       </head>
       <body className={`${inter.variable} font-body antialiased h-full`}>
-        <DataProvider>
-          <AuthProvider>
+        <AuthProvider>
+          <DataProvider>
             {children}
             <Toaster />
-          </AuthProvider>
-        </DataProvider>
+          </DataProvider>
+        </AuthProvider>
       </body>
     </html>
   );

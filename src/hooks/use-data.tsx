@@ -1,16 +1,18 @@
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useCallback } from 'react';
-import { db } from '@/lib/firebase';
-import { collection, onSnapshot, addDoc, updateDoc, deleteDoc, doc, writeBatch, getDocs, query, setDoc, where, getDoc } from 'firebase/firestore';
+import { db, storage } from '@/lib/firebase';
+import { collection, onSnapshot, addDoc, updateDoc, deleteDoc, doc, writeBatch, getDocs, query, setDoc } from 'firebase/firestore';
+import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
 import { initialData } from '@/lib/data';
-import type { AppData, Project, Employee, Expense, Task, InventoryItem, User } from '@/lib/types';
+import type { AppData, Project, Employee, Expense, Task, InventoryItem, User, ProjectFile } from '@/lib/types';
+import { useAuth } from './use-auth';
 
 interface DataContextType {
   data: AppData;
   loading: boolean;
-  addProject: (project: Omit<Project, 'id'>) => Promise<void>;
-  updateProject: (project: Project) => Promise<void>;
+  addProject: (project: Omit<Project, 'id' | 'files'>, files: File[]) => Promise<void>;
+  updateProject: (project: Project, newFiles: File[], filesToDelete: ProjectFile[]) => Promise<void>;
   deleteProject: (projectId: string) => Promise<void>;
   addEmployee: (employee: Omit<Employee, 'id'>) => Promise<void>;
   updateEmployee: (employee: Employee) => Promise<void>;
@@ -28,6 +30,7 @@ interface DataContextType {
 const DataContext = createContext<DataContextType | undefined>(undefined);
 
 export function DataProvider({ children }: { children: ReactNode }) {
+  const { user } = useAuth();
   const [data, setData] = useState<AppData>({
     users: [],
     projects: [],
@@ -45,59 +48,69 @@ export function DataProvider({ children }: { children: ReactNode }) {
     const projectsSnapshot = await getDocs(projectsQuery);
 
     if (projectsSnapshot.empty) {
-        console.log("Database is empty. Seeding with initial data...");
-        const batch = writeBatch(db);
-        
-        // Seed all collections from initialData EXCEPT USERS
-        // Users will be handled by the auth flow to ensure IDs are correct.
-        (Object.keys(initialData) as Array<keyof AppData>).forEach(key => {
-            if (key === 'users') return; // Skip users collection
-            initialData[key].forEach((item: any) => {
-                // Use the hardcoded ID from initialData for consistent seeding
-                const docRef = item.id ? doc(db, key, item.id) : doc(collection(db, key));
-                const {id, ...itemData} = item;
-                batch.set(docRef, itemData);
-            });
+      console.log("Database is empty. Seeding with initial data...");
+      const batch = writeBatch(db);
+
+      // Seed all collections from initialData, including users this time
+      (Object.keys(initialData) as Array<keyof AppData>).forEach(key => {
+        initialData[key].forEach((item: any) => {
+          if (!item.id || item.id.includes('CHANGE_ME')) return; // Don't seed items without a valid ID
+          const docRef = doc(db, key, item.id);
+          const {id, ...itemData} = item;
+          batch.set(docRef, itemData);
         });
-       
-        await batch.commit();
-        console.log("Database seeded successfully.");
+      });
+      
+      await batch.commit();
+      console.log("Database seeded successfully.");
     } else {
-        console.log("Database already has data. No seeding required.");
+      console.log("Database already has data. No seeding required.");
     }
   }, []);
 
   useEffect(() => {
     const initializeData = async () => {
-        setLoading(true);
-        await seedDatabase();
+      setLoading(true);
+      await seedDatabase();
 
-        // Set up listeners for all collections after seeding check
-        const collections: (keyof AppData)[] = ['users', 'projects', 'employees', 'expenses', 'tasks', 'inventory'];
-        const unsubscribes = collections.map(collectionName => {
-            return onSnapshot(collection(db, collectionName), (snapshot) => {
-                const items = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as any;
-                setData(prevData => ({ ...prevData, [collectionName]: items }));
-            }, (error) => {
-                console.error(`Error fetching ${collectionName}:`, error);
-            });
+      const collections: (keyof AppData)[] = ['users', 'projects', 'employees', 'expenses', 'tasks', 'inventory'];
+      const unsubscribes = collections.map(collectionName => {
+        return onSnapshot(collection(db, collectionName), (snapshot) => {
+          const items = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as any;
+          setData(prevData => ({ ...prevData, [collectionName]: items }));
+        }, (error) => {
+          console.error(`Error fetching ${collectionName}:`, error);
         });
+      });
 
-        setLoading(false); // Data loading is complete
-        
-        return () => unsubscribes.forEach(unsub => unsub());
+      setLoading(false);
+      
+      return () => unsubscribes.forEach(unsub => unsub());
     };
 
     initializeData();
   }, [seedDatabase]);
 
 
+  const uploadFile = async (file: File, projectId: string): Promise<ProjectFile> => {
+    const filePath = `projects/${projectId}/${Date.now()}_${file.name}`;
+    const storageRef = ref(storage, filePath);
+    await uploadBytes(storageRef, file);
+    const url = await getDownloadURL(storageRef);
+    return { name: file.name, url, path: filePath };
+  };
+
+  const deleteFile = async (file: ProjectFile) => {
+    const storageRef = ref(storage, file.path);
+    await deleteObject(storageRef);
+  };
+
   const updateUser = async (updatedUser: User) => {
-     if (!updatedUser.id) {
-        console.error("Cannot update user without an ID.");
-        return;
+    if (!updatedUser.id) {
+      console.error("Cannot update user without an ID.");
+      return;
     }
-     try {
+    try {
       const { id, ...userData } = updatedUser;
       const userDocRef = doc(db, 'users', id);
       await setDoc(userDocRef, userData, { merge: true });
@@ -106,15 +119,28 @@ export function DataProvider({ children }: { children: ReactNode }) {
     }
   }
 
-  // Firestore operations
-  const addProject = async (project: Omit<Project, 'id'>) => {
-    await addDoc(collection(db, 'projects'), project);
+  const addProject = async (project: Omit<Project, 'id' | 'files'>, filesToUpload: File[]) => {
+    const projectRef = doc(collection(db, 'projects'));
+    const uploadedFiles = await Promise.all(
+        filesToUpload.map(file => uploadFile(file, projectRef.id))
+    );
+    await setDoc(projectRef, { ...project, files: uploadedFiles });
+  };
+  
+  const updateProject = async (updatedProject: Project, newFiles: File[], filesToDelete: ProjectFile[]) => {
+    const { id, ...data } = updatedProject;
+    
+    await Promise.all(filesToDelete.map(file => deleteFile(file)));
+    const uploadedFiles = await Promise.all(newFiles.map(file => uploadFile(file, id)));
+
+    const remainingFiles = data.files.filter(
+        (file) => !filesToDelete.some((deletedFile) => deletedFile.path === file.path)
+    );
+    
+    const finalFiles = [...remainingFiles, ...uploadedFiles];
+    await setDoc(doc(db, 'projects', id), { ...data, files: finalFiles }, { merge: true });
   };
 
-  const updateProject = async (updatedProject: Project) => {
-    const { id, ...data } = updatedProject;
-    await setDoc(doc(db, 'projects', id), data, { merge: true });
-  };
 
   const deleteProject = async (projectId: string) => {
     await deleteDoc(doc(db, 'projects', projectId));
@@ -135,32 +161,6 @@ export function DataProvider({ children }: { children: ReactNode }) {
   
   const addExpense = async (expense: Omit<Expense, 'id'>) => {
       const docRef = await addDoc(collection(db, 'expenses'), expense);
-      
-      if (expense.category === 'material' && expense.materialName && expense.quantity && expense.unitPrice) {
-          const inventoryQuery = query(collection(db, 'inventory'), where('projectId', '==', expense.projectId), where('name', '==', expense.materialName));
-          const inventorySnapshot = await getDocs(inventoryQuery);
-          
-          if (!inventorySnapshot.empty) {
-              const existingItemDoc = inventorySnapshot.docs[0];
-              const existingItem = existingItemDoc.data() as InventoryItem;
-
-              const totalQuantity = existingItem.quantity + expense.quantity;
-              const newAveragePrice = ((existingItem.quantity * existingItem.averagePrice) + (expense.quantity * expense.unitPrice)) / totalQuantity;
-              
-              await updateDoc(existingItemDoc.ref, {
-                  quantity: totalQuantity,
-                  averagePrice: newAveragePrice,
-              });
-          } else {
-              await addDoc(collection(db, 'inventory'), {
-                  projectId: expense.projectId,
-                  name: expense.materialName,
-                  quantity: expense.quantity,
-                  unit: expense.unit || 'unidade',
-                  averagePrice: expense.unitPrice,
-              });
-          }
-      }
       return docRef;
   };
   
