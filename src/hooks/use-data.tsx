@@ -12,7 +12,7 @@ interface DataContextType {
   data: AppData;
   loading: boolean;
   addProject: (project: Omit<Project, 'id' | 'files'>, files: File[]) => Promise<void>;
-  updateProject: (project: Project, formData: Omit<Project, 'id' | 'files'>, finalFiles: (File | ProjectFile)[]) => Promise<void>;
+  updateProject: (projectId: string, formData: Omit<Project, 'id' | 'files'>, originalFiles: ProjectFile[], finalFiles: (File | ProjectFile)[]) => Promise<void>;
   deleteProject: (projectId: string) => Promise<void>;
   addEmployee: (employee: Omit<Employee, 'id'>) => Promise<void>;
   updateEmployee: (employee: Employee) => Promise<void>;
@@ -102,14 +102,21 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   const deleteFile = async (filePath: string) => {
     if (!filePath) {
-        console.warn("Attempted to delete a file with an empty path.");
+        console.warn("Attempted to delete a file with an empty or invalid path:", filePath);
         return;
     }
     try {
         const storageRef = ref(storage, filePath);
         await deleteObject(storageRef);
     } catch (error) {
-        console.error("Failed to delete file from storage:", error);
+        // It's okay if the file doesn't exist (e.g., already deleted).
+        if (error instanceof Error && 'code' in error && error.code === 'storage/object-not-found') {
+            console.log(`File not found, likely already deleted: ${filePath}`);
+        } else {
+            console.error("Failed to delete file from storage:", error);
+            // Optionally re-throw if you want the outer transaction to fail
+            // throw error; 
+        }
     }
   };
 
@@ -135,46 +142,36 @@ export function DataProvider({ children }: { children: ReactNode }) {
     await setDoc(projectRef, { ...projectData, files: uploadedFiles });
   };
   
-  const updateProject = async (project: Project, formData: Omit<Project, 'id' | 'files'>, finalFilesState: (File | ProjectFile)[]) => {
-    const projectDocRef = doc(db, 'projects', project.id);
-    
-    const originalFiles = project.files || [];
+  const updateProject = async (projectId: string, formData: Omit<Project, 'id' | 'files'>, originalFiles: ProjectFile[], finalFilesState: (File | ProjectFile)[]) => {
+    const projectDocRef = doc(db, 'projects', projectId);
 
-    // 2. Identify files to delete by comparing original and final lists
-    const finalFilePaths = finalFilesState
-        .map(f => (f instanceof File) ? null : f.path)
-        .filter(Boolean);
-        
+    // 1. Identify which files to upload and which to keep.
+    const newFilesToUpload = finalFilesState.filter((f): f is File => f instanceof File);
+    const existingFiles = finalFilesState.filter((f): f is ProjectFile => !(f instanceof File));
+
+    // 2. Identify which files to delete.
+    const finalFilePaths = new Set(existingFiles.map(f => f.path));
     const filesToDelete = originalFiles.filter(
-        (origFile) => !finalFilePaths.includes(origFile.path)
-    );
-    
-    // 3. Identify new files to upload
-    const newFilesToUpload = finalFilesState.filter(
-        (f): f is File => f instanceof File
+        (origFile) => !finalFilePaths.has(origFile.path)
     );
 
-    // 4. Perform Storage operations
+    // 3. Perform Storage operations in parallel.
+    const uploadPromises = newFilesToUpload.map(f => uploadFile(f, projectId));
     const deletePromises = filesToDelete.map(f => deleteFile(f.path));
-    const uploadPromises = newFilesToUpload.map(f => uploadFile(f, project.id));
     
-    await Promise.all(deletePromises);
-    const newUploadedFiles = await Promise.all(uploadPromises);
+    const [newlyUploadedFiles] = await Promise.all([
+        Promise.all(uploadPromises),
+        Promise.all(deletePromises)
+    ]);
 
-    // 5. Construct the final list of files for Firestore
-    const existingFiles = finalFilesState.filter(
-        (f): f is ProjectFile => !(f instanceof File)
-    );
-    
-    const finalFilesForFirestore = [...existingFiles, ...newUploadedFiles];
+    // 4. Construct the final list of file objects for Firestore.
+    const finalFilesForFirestore = [...existingFiles, ...newlyUploadedFiles];
 
-    // 6. Update Firestore
-    const dataToUpdate = {
+    // 5. Update Firestore with the new form data and the final file list.
+    await updateDoc(projectDocRef, {
       ...formData,
       files: finalFilesForFirestore,
-    };
-  
-    await updateDoc(projectDocRef, dataToUpdate);
+    });
   };
 
 

@@ -39,6 +39,7 @@ export function ProjectForm({ project, onFinished }: ProjectFormProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // This state holds the list of files to be displayed and eventually saved.
   const [currentFiles, setCurrentFiles] = useState<(ProjectFile | File)[]>([]);
 
   const defaultValues: Partial<ProjectFormValues> = project
@@ -56,22 +57,20 @@ export function ProjectForm({ project, onFinished }: ProjectFormProps) {
     defaultValues,
   });
 
+  // Effect to reset the form and file state when the project prop changes
   useEffect(() => {
     form.reset(defaultValues);
-    if (project?.files) {
-      setCurrentFiles(project.files);
-    } else {
-      setCurrentFiles([]);
-    }
+    setCurrentFiles(project?.files || []);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [project]);
+  }, [project, form.reset]);
 
 
   const onSubmit = async (data: ProjectFormValues) => {
     setIsSubmitting(true);
     try {
       if (project) {
-        await updateProject(project, data, currentFiles);
+        // We pass the original files and the new desired state to updateProject
+        await updateProject(project.id, data, project.files || [], currentFiles);
         toast({ title: 'Obra atualizada!', description: 'Os dados da obra foram salvos.' });
       } else {
         const newFiles = currentFiles.filter((f): f is File => f instanceof File);
@@ -92,6 +91,7 @@ export function ProjectForm({ project, onFinished }: ProjectFormProps) {
     if (files) {
       setCurrentFiles(prev => [...prev, ...Array.from(files)]);
     }
+    // Reset file input to allow selecting the same file again
     if (event.target) {
       event.target.value = ''; 
     }
@@ -232,9 +232,12 @@ export function ProjectForm({ project, onFinished }: ProjectFormProps) {
                  <div className="space-y-2 mt-2">
                     {currentFiles.map((file, index) => {
                         const isNew = file instanceof File;
-                        const key = isNew ? `${file.name}-${index}` : file.path;
-                        const name = isNew ? `${file.name} (novo)` : file.name;
-                        const title = isNew ? file.name : file.name;
+                        // This key generation is now robust and solves the warning.
+                        const key = isNew 
+                          ? `${file.name}-${file.size}-${file.lastModified}` 
+                          : file.path;
+                        const name = isNew ? file.name : file.name;
+                        const title = isNew ? `${file.name} (novo)` : file.name;
 
                         return (
                             <div key={key} className={`flex items-center justify-between rounded-md border p-2 ${isNew ? 'border-dashed' : ''}`}>
@@ -257,7 +260,7 @@ export function ProjectForm({ project, onFinished }: ProjectFormProps) {
                     className="hidden"
                     multiple
                   />
-                  <Button type="button" variant="outline" onClick={() => fileInputRef.current?.click()} className="mt-2">
+                  <Button type="button" variant="outline" onClick={() => fileInputRef.current?.click()} className="mt-2" disabled={isSubmitting}>
                       <Upload className="mr-2 h-4 w-4" /> Carregar Arquivos
                   </Button>
                 </div>
