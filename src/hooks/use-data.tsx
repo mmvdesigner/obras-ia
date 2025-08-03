@@ -101,9 +101,9 @@ export function DataProvider({ children }: { children: ReactNode }) {
   };
 
   const deleteFile = async (file: ProjectFile) => {
-    if (file && file.path) {
-        const storageRef = ref(storage, file.path);
-        await deleteObject(storageRef);
+    if (file?.path) {
+      const storageRef = ref(storage, file.path);
+      await deleteObject(storageRef);
     }
   };
 
@@ -139,9 +139,10 @@ export function DataProvider({ children }: { children: ReactNode }) {
     const uploadedFiles = await Promise.all(newFiles.map(file => uploadFile(file, project.id)));
   
     // 3. Filter out deleted files from the original project files list
-    const remainingOldFiles = project.files?.filter(
+    const originalFiles = project.files || [];
+    const remainingOldFiles = originalFiles.filter(
       (originalFile) => !filesToDelete.some((deletedFile) => deletedFile.path === originalFile.path)
-    ) || [];
+    );
 
     // 4. Combine remaining old files with newly uploaded files
     const finalFiles = [...remainingOldFiles, ...uploadedFiles];
