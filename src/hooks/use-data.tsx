@@ -12,7 +12,7 @@ interface DataContextType {
   data: AppData;
   loading: boolean;
   addProject: (project: Omit<Project, 'id' | 'files'>, files: File[]) => Promise<void>;
-  updateProject: (projectId: string, formData: Omit<Project, 'id' | 'files'>, finalFiles: (File | ProjectFile)[]) => Promise<void>;
+  updateProject: (project: Project, formData: Omit<Project, 'id' | 'files'>, finalFiles: (File | ProjectFile)[]) => Promise<void>;
   deleteProject: (projectId: string) => Promise<void>;
   addEmployee: (employee: Omit<Employee, 'id'>) => Promise<void>;
   updateEmployee: (employee: Employee) => Promise<void>;
@@ -135,15 +135,10 @@ export function DataProvider({ children }: { children: ReactNode }) {
     await setDoc(projectRef, { ...projectData, files: uploadedFiles });
   };
   
-  const updateProject = async (projectId: string, formData: Omit<Project, 'id' | 'files'>, finalFilesState: (File | ProjectFile)[]) => {
-    const projectDocRef = doc(db, 'projects', projectId);
+  const updateProject = async (project: Project, formData: Omit<Project, 'id' | 'files'>, finalFilesState: (File | ProjectFile)[]) => {
+    const projectDocRef = doc(db, 'projects', project.id);
     
-    // 1. Get the current state of the project from Firestore to compare file lists
-    const projectSnapshot = await getDoc(projectDocRef);
-    if (!projectSnapshot.exists()) {
-        throw new Error("Project not found!");
-    }
-    const originalFiles: ProjectFile[] = projectSnapshot.data().files || [];
+    const originalFiles = project.files || [];
 
     // 2. Identify files to delete by comparing original and final lists
     const finalFilePaths = finalFilesState
@@ -161,7 +156,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
     // 4. Perform Storage operations
     const deletePromises = filesToDelete.map(f => deleteFile(f.path));
-    const uploadPromises = newFilesToUpload.map(f => uploadFile(f, projectId));
+    const uploadPromises = newFilesToUpload.map(f => uploadFile(f, project.id));
     
     await Promise.all(deletePromises);
     const newUploadedFiles = await Promise.all(uploadPromises);

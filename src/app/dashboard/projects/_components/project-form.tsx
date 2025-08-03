@@ -13,7 +13,7 @@ import { useData } from '@/hooks/use-data';
 import { useToast } from '@/hooks/use-toast';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { FileText, Trash2, Upload, Loader2 } from 'lucide-react';
-import { useRef, useState, useEffect, useCallback } from 'react';
+import { useRef, useState, useEffect } from 'react';
 
 const projectSchema = z.object({
   name: z.string().min(1, 'Nome é obrigatório'),
@@ -64,14 +64,14 @@ export function ProjectForm({ project, onFinished }: ProjectFormProps) {
       setCurrentFiles([]);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [project, form.reset]);
+  }, [project]);
 
 
   const onSubmit = async (data: ProjectFormValues) => {
     setIsSubmitting(true);
     try {
       if (project) {
-        await updateProject(project.id, data, currentFiles);
+        await updateProject(project, data, currentFiles);
         toast({ title: 'Obra atualizada!', description: 'Os dados da obra foram salvos.' });
       } else {
         const newFiles = currentFiles.filter((f): f is File => f instanceof File);
@@ -232,7 +232,7 @@ export function ProjectForm({ project, onFinished }: ProjectFormProps) {
                  <div className="space-y-2 mt-2">
                     {currentFiles.map((file, index) => {
                         const isNew = file instanceof File;
-                        const key = isNew ? index : file.path;
+                        const key = isNew ? `${file.name}-${index}` : file.path;
                         const name = isNew ? `${file.name} (novo)` : file.name;
                         const title = isNew ? file.name : file.name;
 
