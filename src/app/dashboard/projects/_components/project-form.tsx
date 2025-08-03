@@ -246,8 +246,8 @@ export function ProjectForm({ project, onFinished }: ProjectFormProps) {
                 <FormLabel>Documentos da Obra</FormLabel>
                  <div className="space-y-2 mt-2">
                     {/* List existing files */}
-                    {existingFiles.map((file) => (
-                      <div key={file.path} className="flex items-center justify-between rounded-md border p-2">
+                    {existingFiles.map((file, index) => (
+                      <div key={`${file.path}-${index}`} className="flex items-center justify-between rounded-md border p-2">
                         <div className="flex items-center gap-2 overflow-hidden">
                           <FileText className="h-4 w-4 text-muted-foreground flex-shrink-0" />
                           <span className="text-sm truncate" title={file.name}>{file.name}</span>
