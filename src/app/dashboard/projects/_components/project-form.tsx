@@ -39,7 +39,6 @@ export function ProjectForm({ project, onFinished }: ProjectFormProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // This state holds the "final" list of files. It can contain existing ProjectFile objects or new File objects.
   const [currentFiles, setCurrentFiles] = useState<(ProjectFile | File)[]>([]);
 
   const defaultValues: Partial<ProjectFormValues> = project
@@ -57,7 +56,6 @@ export function ProjectForm({ project, onFinished }: ProjectFormProps) {
     defaultValues,
   });
 
-  // Effect to reset form and files when the project prop changes (e.g., opening a new project in the dialog)
   useEffect(() => {
     form.reset(defaultValues);
     if (project?.files) {
@@ -73,11 +71,9 @@ export function ProjectForm({ project, onFinished }: ProjectFormProps) {
     setIsSubmitting(true);
     try {
       if (project) {
-        // We now pass the final, desired state of files to the update function.
         await updateProject(project.id, data, currentFiles);
         toast({ title: 'Obra atualizada!', description: 'Os dados da obra foram salvos.' });
       } else {
-        // For new projects, we only have new files to upload.
         const newFiles = currentFiles.filter((f): f is File => f instanceof File);
         await addProject(data, newFiles);
         toast({ title: 'Obra criada!', description: 'A nova obra foi adicionada com sucesso.' });
@@ -94,16 +90,13 @@ export function ProjectForm({ project, onFinished }: ProjectFormProps) {
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
     if (files) {
-      // Append new files to the existing list
       setCurrentFiles(prev => [...prev, ...Array.from(files)]);
     }
-    // Reset the input to allow re-uploading the same file if needed
     if (event.target) {
       event.target.value = ''; 
     }
   };
   
-  // This function now simply removes the file from the "currentFiles" state.
   const handleRemoveFile = (fileToRemove: ProjectFile | File) => {
     setCurrentFiles(prev => prev.filter(file => file !== fileToRemove));
   };
@@ -239,7 +232,7 @@ export function ProjectForm({ project, onFinished }: ProjectFormProps) {
                  <div className="space-y-2 mt-2">
                     {currentFiles.map((file, index) => {
                         const isNew = file instanceof File;
-                        const key = isNew ? `${file.name}-${index}` : file.path;
+                        const key = isNew ? index : file.path;
                         const name = isNew ? `${file.name} (novo)` : file.name;
                         const title = isNew ? file.name : file.name;
 
