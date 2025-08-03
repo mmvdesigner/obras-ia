@@ -66,7 +66,7 @@ export function ProjectForm({ project, onFinished }: ProjectFormProps) {
       setCurrentFiles([]);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [project, onFinished]);
+  }, [project, form.reset]);
 
 
   const onSubmit = async (data: ProjectFormValues) => {
@@ -239,7 +239,7 @@ export function ProjectForm({ project, onFinished }: ProjectFormProps) {
                  <div className="space-y-2 mt-2">
                     {currentFiles.map((file, index) => {
                         const isNew = file instanceof File;
-                        const key = isNew ? `${file.name}-${index}` : file.path;
+                        const key = isNew ? `${file.name}-${file.size}-${file.lastModified}` : file.path;
                         const name = isNew ? `${file.name} (novo)` : file.name;
                         const title = isNew ? file.name : file.name;
 
