@@ -228,7 +228,7 @@ export function ProjectForm({ project, onFinished }: ProjectFormProps) {
                     {currentFiles.map((file, index) => {
                         const isNew = file instanceof File;
                         const key = isNew 
-                          ? `${file.name}-${file.size}-${file.lastModified}` 
+                          ? `${file.name}-${index}` 
                           : file.path;
                         const name = isNew ? file.name : file.name;
                         const title = isNew ? `${file.name} (novo)` : file.name;
@@ -274,3 +274,5 @@ export function ProjectForm({ project, onFinished }: ProjectFormProps) {
     </Form>
   );
 }
+
+    
