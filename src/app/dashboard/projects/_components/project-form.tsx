@@ -43,11 +43,8 @@ export function ProjectForm({ project, onFinished }: ProjectFormProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Separate state for UI rendering of existing files
   const [displayFiles, setDisplayFiles] = useState<ProjectFile[]>([]);
-  // State for new file objects to be uploaded
   const [newFiles, setNewFiles] = useState<FileWithId[]>([]);
-  // State for existing ProjectFile objects to be deleted
   const [filesToDelete, setFilesToDelete] = useState<ProjectFile[]>([]);
   
   useEffect(() => {
@@ -75,12 +72,12 @@ export function ProjectForm({ project, onFinished }: ProjectFormProps) {
   const onSubmit = async (data: ProjectFormValues) => {
     setIsSubmitting(true);
     try {
-      const filesToUpload = newFiles.map(fwid => fwid.file);
       if (project) {
-        await updateProject(project, data, filesToUpload, filesToDelete);
+        // Pass the original files from the project prop, not the display state
+        await updateProject(project, data, newFiles.map(f => f.file), filesToDelete);
         toast({ title: 'Obra atualizada!', description: 'Os dados da obra foram salvos.' });
       } else {
-        await addProject(data, filesToUpload);
+        await addProject(data, newFiles.map(f => f.file));
         toast({ title: 'Obra criada!', description: 'A nova obra foi adicionada com sucesso.' });
       }
       onFinished();
@@ -111,7 +108,9 @@ export function ProjectForm({ project, onFinished }: ProjectFormProps) {
   };
   
   const handleRemoveExistingFile = (fileToRemove: ProjectFile) => {
+    // Only remove from the display list, not the source of truth
     setDisplayFiles(prev => prev.filter(file => file.path !== fileToRemove.path));
+    // Add to the list of files to be deleted on submit
     setFilesToDelete(prev => [...prev, fileToRemove]);
   };
 
