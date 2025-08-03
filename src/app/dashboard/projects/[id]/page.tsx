@@ -111,7 +111,7 @@ export default function ProjectDetailsPage() {
                             <span>{file.name}</span>
                           </div>
                           <Button asChild variant="outline" size="sm">
-                             <a href={file.url} target="_blank" rel="noopener noreferrer" download={file.name}>
+                             <a href={file.url} target="_blank" rel="noopener noreferrer">
                                 <Download className="mr-2 h-4 w-4" />
                                 Baixar
                              </a>

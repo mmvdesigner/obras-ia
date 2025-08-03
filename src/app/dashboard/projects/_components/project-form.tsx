@@ -1,6 +1,6 @@
 'use client';
 
-import { useForm, useFieldArray } from 'react-hook-form';
+import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Button } from '@/components/ui/button';
@@ -12,9 +12,8 @@ import type { Project, ProjectFile } from '@/lib/types';
 import { useData } from '@/hooks/use-data';
 import { useToast } from '@/hooks/use-toast';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { FileText, Trash2, Upload } from 'lucide-react';
-import { useRef, useState } from 'react';
-import { Loader2 } from 'lucide-react';
+import { FileText, Trash2, Upload, Loader2 } from 'lucide-react';
+import { useRef, useState, useEffect } from 'react';
 
 const projectSchema = z.object({
   name: z.string().min(1, 'Nome é obrigatório'),
@@ -40,10 +39,15 @@ export function ProjectForm({ project, onFinished }: ProjectFormProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Separate states for existing files, new files, and files to delete
-  const [existingFiles, setExistingFiles] = useState<ProjectFile[]>(project?.files || []);
+  const [existingFiles, setExistingFiles] = useState<ProjectFile[]>([]);
   const [newFiles, setNewFiles] = useState<File[]>([]);
   const [filesToDelete, setFilesToDelete] = useState<ProjectFile[]>([]);
+  
+  useEffect(() => {
+    if (project?.files) {
+      setExistingFiles(project.files);
+    }
+  }, [project]);
 
 
   const defaultValues: Partial<ProjectFormValues> = project
@@ -65,11 +69,10 @@ export function ProjectForm({ project, onFinished }: ProjectFormProps) {
     setIsSubmitting(true);
     try {
       if (project) {
-        // We need to pass the full project object, including existing files
         const projectDataWithFiles = {
           ...project,
           ...data,
-          files: existingFiles, // Pass the current state of existing files
+          files: existingFiles,
         };
         await updateProject(projectDataWithFiles, newFiles, filesToDelete);
         toast({ title: 'Obra atualizada!', description: 'Os dados da obra foram salvos.' });
@@ -107,57 +110,18 @@ export function ProjectForm({ project, onFinished }: ProjectFormProps) {
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-        <ScrollArea className="h-[60vh] max-h-[60vh] md:max-h-none md:h-auto">
-          <div className="space-y-4 pr-6">
-            <FormField
-              control={form.control}
-              name="name"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Nome da Obra</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Residencial Sol Nascente" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="address"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Endereço</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Rua das Acácias, 123" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="client"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Cliente</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Construtora Confiança" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+      <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col h-full">
+        <div className="flex-1 overflow-hidden">
+          <ScrollArea className="h-full">
+            <div className="space-y-4 pr-6 pl-1 py-4">
               <FormField
                 control={form.control}
-                name="startDate"
+                name="name"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Data de Início</FormLabel>
+                    <FormLabel>Nome da Obra</FormLabel>
                     <FormControl>
-                      <Input type="date" {...field} />
+                      <Input placeholder="Residencial Sol Nascente" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -165,115 +129,156 @@ export function ProjectForm({ project, onFinished }: ProjectFormProps) {
               />
               <FormField
                 control={form.control}
-                name="endDate"
+                name="address"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Previsão de Término</FormLabel>
+                    <FormLabel>Endereço</FormLabel>
                     <FormControl>
-                      <Input type="date" {...field} />
+                      <Input placeholder="Rua das Acácias, 123" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
-            </div>
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                <FormField
+              <FormField
                 control={form.control}
-                name="totalBudget"
+                name="client"
                 render={({ field }) => (
-                    <FormItem>
-                    <FormLabel>Orçamento Total</FormLabel>
+                  <FormItem>
+                    <FormLabel>Cliente</FormLabel>
                     <FormControl>
-                        <Input type="number" placeholder="500000" {...field} />
+                      <Input placeholder="Construtora Confiança" {...field} />
                     </FormControl>
                     <FormMessage />
-                    </FormItem>
+                  </FormItem>
                 )}
+              />
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <FormField
+                  control={form.control}
+                  name="startDate"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Data de Início</FormLabel>
+                      <FormControl>
+                        <Input type="date" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
                 />
                 <FormField
-                control={form.control}
-                name="status"
-                render={({ field }) => (
+                  control={form.control}
+                  name="endDate"
+                  render={({ field }) => (
                     <FormItem>
-                    <FormLabel>Status</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                        <FormControl>
-                        <SelectTrigger>
-                            <SelectValue placeholder="Selecione o status" />
-                        </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                        <SelectItem value="planejamento">Planejamento</SelectItem>
-                        <SelectItem value="em andamento">Em Andamento</SelectItem>
-                        <SelectItem value="pausada">Pausada</SelectItem>
-                        <SelectItem value="concluída">Concluída</SelectItem>
-                        </SelectContent>
-                    </Select>
-                    <FormMessage />
+                      <FormLabel>Previsão de Término</FormLabel>
+                      <FormControl>
+                        <Input type="date" {...field} />
+                      </FormControl>
+                      <FormMessage />
                     </FormItem>
-                )}
+                  )}
                 />
-            </div>
-            <FormField
-              control={form.control}
-              name="description"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Descrição</FormLabel>
-                  <FormControl>
-                    <Textarea placeholder="Detalhes sobre a obra..." {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            
-            <FormItem>
-              <FormLabel>Documentos da Obra</FormLabel>
-               <div className="space-y-2 mt-2">
-                  {/* List existing files */}
-                  {existingFiles.map((file) => (
-                    <div key={file.path} className="flex items-center justify-between rounded-md border p-2">
-                      <div className="flex items-center gap-2">
-                        <FileText className="h-4 w-4 text-muted-foreground" />
-                        <span className="text-sm">{file.name}</span>
-                      </div>
-                      <Button type="button" variant="ghost" size="icon" onClick={() => handleRemoveExistingFile(file)}>
-                        <Trash2 className="h-4 w-4 text-destructive" />
-                      </Button>
-                    </div>
-                  ))}
-                  {/* List new files to be uploaded */}
-                  {newFiles.map((file, index) => (
-                     <div key={index} className="flex items-center justify-between rounded-md border border-dashed p-2">
-                        <div className="flex items-center gap-2">
-                            <FileText className="h-4 w-4 text-muted-foreground" />
-                            <span className="text-sm italic">{file.name} (novo)</span>
-                        </div>
-                        <Button type="button" variant="ghost" size="icon" onClick={() => handleRemoveNewFile(index)}>
-                            <Trash2 className="h-4 w-4 text-destructive" />
-                        </Button>
-                    </div>
-                  ))}
-                </div>
-              <div>
-                <input 
-                  type="file" 
-                  ref={fileInputRef} 
-                  onChange={handleFileChange}
-                  className="hidden"
-                  multiple
-                />
-                <Button type="button" variant="outline" onClick={() => fileInputRef.current?.click()} className="mt-2">
-                    <Upload className="mr-2 h-4 w-4" /> Carregar Arquivos
-                </Button>
               </div>
-              <FormMessage />
-            </FormItem>
-          </div>
-        </ScrollArea>
-        <div className="flex justify-end pt-4 gap-2">
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                  <FormField
+                  control={form.control}
+                  name="totalBudget"
+                  render={({ field }) => (
+                      <FormItem>
+                      <FormLabel>Orçamento Total</FormLabel>
+                      <FormControl>
+                          <Input type="number" placeholder="500000" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                      </FormItem>
+                  )}
+                  />
+                  <FormField
+                  control={form.control}
+                  name="status"
+                  render={({ field }) => (
+                      <FormItem>
+                      <FormLabel>Status</FormLabel>
+                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <FormControl>
+                          <SelectTrigger>
+                              <SelectValue placeholder="Selecione o status" />
+                          </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                          <SelectItem value="planejamento">Planejamento</SelectItem>
+                          <SelectItem value="em andamento">Em Andamento</SelectItem>
+                          <SelectItem value="pausada">Pausada</SelectItem>
+                          <SelectItem value="concluída">Concluída</SelectItem>
+                          </SelectContent>
+                      </Select>
+                      <FormMessage />
+                      </FormItem>
+                  )}
+                  />
+              </div>
+              <FormField
+                control={form.control}
+                name="description"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Descrição</FormLabel>
+                    <FormControl>
+                      <Textarea placeholder="Detalhes sobre a obra..." {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              
+              <FormItem>
+                <FormLabel>Documentos da Obra</FormLabel>
+                 <div className="space-y-2 mt-2">
+                    {/* List existing files */}
+                    {existingFiles.map((file) => (
+                      <div key={file.path} className="flex items-center justify-between rounded-md border p-2">
+                        <div className="flex items-center gap-2 overflow-hidden">
+                          <FileText className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                          <span className="text-sm truncate" title={file.name}>{file.name}</span>
+                        </div>
+                        <Button type="button" variant="ghost" size="icon" onClick={() => handleRemoveExistingFile(file)}>
+                          <Trash2 className="h-4 w-4 text-destructive" />
+                        </Button>
+                      </div>
+                    ))}
+                    {/* List new files to be uploaded */}
+                    {newFiles.map((file, index) => (
+                       <div key={index} className="flex items-center justify-between rounded-md border border-dashed p-2">
+                          <div className="flex items-center gap-2 overflow-hidden">
+                              <FileText className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                              <span className="text-sm italic truncate" title={file.name}>{file.name} (novo)</span>
+                          </div>
+                          <Button type="button" variant="ghost" size="icon" onClick={() => handleRemoveNewFile(index)}>
+                              <Trash2 className="h-4 w-4 text-destructive" />
+                          </Button>
+                      </div>
+                    ))}
+                  </div>
+                <div>
+                  <input 
+                    type="file" 
+                    ref={fileInputRef} 
+                    onChange={handleFileChange}
+                    className="hidden"
+                    multiple
+                  />
+                  <Button type="button" variant="outline" onClick={() => fileInputRef.current?.click()} className="mt-2">
+                      <Upload className="mr-2 h-4 w-4" /> Carregar Arquivos
+                  </Button>
+                </div>
+                <FormMessage />
+              </FormItem>
+            </div>
+          </ScrollArea>
+        </div>
+        <div className="flex justify-end pt-4 gap-2 border-t">
             <Button type="button" variant="ghost" onClick={onFinished} disabled={isSubmitting}>Cancelar</Button>
             <Button type="submit" disabled={isSubmitting}>
               {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}

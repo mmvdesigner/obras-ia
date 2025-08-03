@@ -112,14 +112,16 @@ export default function ProjectsPage() {
         </Card>
       </div>
 
-      <DialogContent className="sm:max-w-[625px]">
+      <DialogContent className="sm:max-w-3xl h-[90vh] flex flex-col">
         <DialogHeader>
           <DialogTitle>{editingProject ? 'Editar Obra' : 'Nova Obra'}</DialogTitle>
           <DialogDescription>
             {editingProject ? 'Atualize os detalhes da obra.' : 'Preencha as informações da nova obra.'}
           </DialogDescription>
         </DialogHeader>
-        <ProjectForm project={editingProject} onFinished={() => setOpen(false)} />
+        <div className="flex-1 overflow-hidden">
+         <ProjectForm project={editingProject} onFinished={() => setOpen(false)} />
+        </div>
       </DialogContent>
     </Dialog>
   );
