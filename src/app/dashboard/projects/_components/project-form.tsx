@@ -53,7 +53,12 @@ export function ProjectForm({ project, onFinished }: ProjectFormProps) {
   useEffect(() => {
     if (project?.files) {
       setExistingFiles(project.files);
+    } else {
+      setExistingFiles([]);
     }
+     // Reset other states when project changes
+    setNewFiles([]);
+    setFilesToDelete([]);
   }, [project]);
 
 
@@ -71,6 +76,13 @@ export function ProjectForm({ project, onFinished }: ProjectFormProps) {
     resolver: zodResolver(projectSchema),
     defaultValues,
   });
+  
+  // Reset form when project changes
+  useEffect(() => {
+    form.reset(defaultValues);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [project, form.reset]);
+
 
   const onSubmit = async (data: ProjectFormValues) => {
     setIsSubmitting(true);

@@ -129,11 +129,12 @@ export function DataProvider({ children }: { children: ReactNode }) {
     await setDoc(projectRef, { ...project, files: uploadedFiles });
   };
   
-  const updateProject = async (project: Project, formData: Omit<Project, 'id' | 'files'>, newFiles: File[], filesToDelete: ProjectFile[]) => {
+ const updateProject = async (project: Project, formData: Omit<Project, 'id' | 'files'>, newFiles: File[], filesToDelete: ProjectFile[]) => {
     const projectDocRef = doc(db, 'projects', project.id);
   
     // 1. Delete files from Storage that were marked for deletion
-    await Promise.all(filesToDelete.map(file => deleteFile(file)));
+    const validFilesToDelete = filesToDelete.filter(f => f && f.path);
+    await Promise.all(validFilesToDelete.map(file => deleteFile(file)));
   
     // 2. Upload new files to Storage
     const uploadedFiles = await Promise.all(newFiles.map(file => uploadFile(file, project.id)));
@@ -141,7 +142,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     // 3. Filter out deleted files from the original project files list
     const originalFiles = project.files || [];
     const remainingOldFiles = originalFiles.filter(
-      (originalFile) => !filesToDelete.some((deletedFile) => deletedFile.path === originalFile.path)
+      (originalFile) => !validFilesToDelete.some((deletedFile) => deletedFile.path === originalFile.path)
     );
 
     // 4. Combine remaining old files with newly uploaded files
@@ -156,6 +157,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     // 6. Update the project document in Firestore
     await updateDoc(projectDocRef, dataToUpdate);
   };
+
 
   const deleteProject = async (projectId: string) => {
     await deleteDoc(doc(db, 'projects', projectId));
