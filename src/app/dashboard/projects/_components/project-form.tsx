@@ -43,13 +43,16 @@ export function ProjectForm({ project, onFinished }: ProjectFormProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const [displayFiles, setDisplayFiles] = useState<ProjectFile[]>([]);
+  // State for files that are already uploaded and exist in the project
+  const [existingFiles, setExistingFiles] = useState<ProjectFile[]>([]);
+  // State for newly added files from the user's computer
   const [newFiles, setNewFiles] = useState<FileWithId[]>([]);
+  // State for existing files that are marked for deletion
   const [filesToDelete, setFilesToDelete] = useState<ProjectFile[]>([]);
   
   useEffect(() => {
     if (project?.files) {
-      setDisplayFiles(project.files);
+      setExistingFiles(project.files);
     }
   }, [project]);
 
@@ -73,7 +76,7 @@ export function ProjectForm({ project, onFinished }: ProjectFormProps) {
     setIsSubmitting(true);
     try {
       if (project) {
-        // Pass the original files from the project prop, not the display state
+        // Pass the original project, form data, new files, and files to delete
         await updateProject(project, data, newFiles.map(f => f.file), filesToDelete);
         toast({ title: 'Obra atualizada!', description: 'Os dados da obra foram salvos.' });
       } else {
@@ -108,8 +111,8 @@ export function ProjectForm({ project, onFinished }: ProjectFormProps) {
   };
   
   const handleRemoveExistingFile = (fileToRemove: ProjectFile) => {
-    // Only remove from the display list, not the source of truth
-    setDisplayFiles(prev => prev.filter(file => file.path !== fileToRemove.path));
+    // Remove from the display list
+    setExistingFiles(prev => prev.filter(file => file.path !== fileToRemove.path));
     // Add to the list of files to be deleted on submit
     setFilesToDelete(prev => [...prev, fileToRemove]);
   };
@@ -243,8 +246,8 @@ export function ProjectForm({ project, onFinished }: ProjectFormProps) {
                 <FormLabel>Documentos da Obra</FormLabel>
                  <div className="space-y-2 mt-2">
                     {/* List existing files */}
-                    {displayFiles.map((file, index) => (
-                      <div key={`${file.path}-${index}`} className="flex items-center justify-between rounded-md border p-2">
+                    {existingFiles.map((file) => (
+                      <div key={file.path} className="flex items-center justify-between rounded-md border p-2">
                         <div className="flex items-center gap-2 overflow-hidden">
                           <FileText className="h-4 w-4 text-muted-foreground flex-shrink-0" />
                           <span className="text-sm truncate" title={file.name}>{file.name}</span>

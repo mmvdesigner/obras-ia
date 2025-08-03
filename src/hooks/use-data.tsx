@@ -132,26 +132,27 @@ export function DataProvider({ children }: { children: ReactNode }) {
   };
   
   const updateProject = async (project: Project, formData: Omit<Project, 'id' | 'files'>, newFiles: File[], filesToDelete: ProjectFile[]) => {
-    // Delete files marked for deletion from Firebase Storage
+    // 1. Delete files from Storage that were marked for deletion
     await Promise.all(filesToDelete.map(file => deleteFile(file)));
   
-    // Upload new files to Firebase Storage
+    // 2. Upload new files to Storage
     const uploadedFiles = await Promise.all(newFiles.map(file => uploadFile(file, project.id)));
   
-    // Calculate the final list of files for the Firestore document
+    // 3. Calculate the final list of files for Firestore
+    // It's the original list, minus the deleted ones, plus the new ones.
     const remainingOldFiles = project.files.filter(
       (originalFile) => !filesToDelete.some((deletedFile) => deletedFile.path === originalFile.path)
     );
     
     const finalFiles = [...remainingOldFiles, ...uploadedFiles];
   
-    // Create a clean object with the form data and the final file list
+    // 4. Create the final object to update in Firestore
     const updatedData = {
-        ...formData,
-        files: finalFiles
+        ...formData, // All the text fields from the form
+        files: finalFiles // The final, correct list of file objects
     };
   
-    // Update the project document in Firestore
+    // 5. Update the project document in Firestore
     const projectDocRef = doc(db, 'projects', project.id);
     await updateDoc(projectDocRef, updatedData);
   };
