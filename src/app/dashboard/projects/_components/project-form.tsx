@@ -28,6 +28,11 @@ const projectSchema = z.object({
 
 type ProjectFormValues = z.infer<typeof projectSchema>;
 
+// Add a temporary unique ID to the File object for stable keys
+type FileWithId = {
+  id: string;
+  file: File;
+};
 interface ProjectFormProps {
   project?: Project | null;
   onFinished: () => void;
@@ -40,7 +45,7 @@ export function ProjectForm({ project, onFinished }: ProjectFormProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [existingFiles, setExistingFiles] = useState<ProjectFile[]>([]);
-  const [newFiles, setNewFiles] = useState<File[]>([]);
+  const [newFiles, setNewFiles] = useState<FileWithId[]>([]);
   const [filesToDelete, setFilesToDelete] = useState<ProjectFile[]>([]);
   
   useEffect(() => {
@@ -68,16 +73,17 @@ export function ProjectForm({ project, onFinished }: ProjectFormProps) {
   const onSubmit = async (data: ProjectFormValues) => {
     setIsSubmitting(true);
     try {
+      const filesToUpload = newFiles.map(fwid => fwid.file);
       if (project) {
         const projectDataWithFiles = {
           ...project,
           ...data,
           files: existingFiles,
         };
-        await updateProject(projectDataWithFiles, newFiles, filesToDelete);
+        await updateProject(projectDataWithFiles, filesToUpload, filesToDelete);
         toast({ title: 'Obra atualizada!', description: 'Os dados da obra foram salvos.' });
       } else {
-        await addProject(data, newFiles);
+        await addProject(data, filesToUpload);
         toast({ title: 'Obra criada!', description: 'A nova obra foi adicionada com sucesso.' });
       }
       onFinished();
@@ -92,15 +98,19 @@ export function ProjectForm({ project, onFinished }: ProjectFormProps) {
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
     if (files) {
-      setNewFiles(prev => [...prev, ...Array.from(files)]);
+      const filesWithIds: FileWithId[] = Array.from(files).map(file => ({
+          id: `${file.name}-${file.lastModified}-${Math.random()}`,
+          file,
+      }));
+      setNewFiles(prev => [...prev, ...filesWithIds]);
     }
     if (event.target) {
       event.target.value = '';
     }
   };
 
-  const handleRemoveNewFile = (index: number) => {
-    setNewFiles(prev => prev.filter((_, i) => i !== index));
+  const handleRemoveNewFile = (id: string) => {
+    setNewFiles(prev => prev.filter((fwid) => fwid.id !== id));
   };
   
   const handleRemoveExistingFile = (fileToRemove: ProjectFile) => {
@@ -249,13 +259,13 @@ export function ProjectForm({ project, onFinished }: ProjectFormProps) {
                       </div>
                     ))}
                     {/* List new files to be uploaded */}
-                    {newFiles.map((file, index) => (
-                       <div key={index} className="flex items-center justify-between rounded-md border border-dashed p-2">
+                    {newFiles.map((fwid) => (
+                       <div key={fwid.id} className="flex items-center justify-between rounded-md border border-dashed p-2">
                           <div className="flex items-center gap-2 overflow-hidden">
                               <FileText className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                              <span className="text-sm italic truncate" title={file.name}>{file.name} (novo)</span>
+                              <span className="text-sm italic truncate" title={fwid.file.name}>{fwid.file.name} (novo)</span>
                           </div>
-                          <Button type="button" variant="ghost" size="icon" onClick={() => handleRemoveNewFile(index)}>
+                          <Button type="button" variant="ghost" size="icon" onClick={() => handleRemoveNewFile(fwid.id)}>
                               <Trash2 className="h-4 w-4 text-destructive" />
                           </Button>
                       </div>
