@@ -41,7 +41,6 @@ export function DataProvider({ children }: { children: ReactNode }) {
   });
   const [loading, setLoading] = useState(true);
 
-  // This function seeds the database with initial data if it's empty.
   const seedDatabase = useCallback(async () => {
     console.log("Checking if database needs seeding...");
     const projectsQuery = query(collection(db, "projects"));
@@ -51,10 +50,9 @@ export function DataProvider({ children }: { children: ReactNode }) {
       console.log("Database is empty. Seeding with initial data...");
       const batch = writeBatch(db);
 
-      // Seed all collections from initialData, including users this time
       (Object.keys(initialData) as Array<keyof AppData>).forEach(key => {
         initialData[key].forEach((item: any) => {
-          if (!item.id || item.id.includes('CHANGE_ME')) return; // Don't seed items without a valid ID
+          if (!item.id || item.id.includes('CHANGE_ME')) return;
           const docRef = doc(db, key, item.id);
           const {id, ...itemData} = item;
           batch.set(docRef, itemData);
@@ -146,22 +144,19 @@ export function DataProvider({ children }: { children: ReactNode }) {
     originalFiles: ProjectFile[], 
     finalFileState: (File | ProjectFile)[]
   ) => {
-    try {
-      // 1. Separate new files for upload and existing files.
+      // 1. Identify which files are new and which are existing
       const newFilesToUpload = finalFileState.filter((f): f is File => f instanceof File);
       const remainingExistingFiles = finalFileState.filter((f): f is ProjectFile => !(f instanceof File));
       const remainingExistingFilePaths = new Set(remainingExistingFiles.map(f => f.path));
   
-      // 2. Determine which files to delete from storage.
+      // 2. Identify which of the original files should be deleted from storage
       const filesToDelete = originalFiles.filter(
         (origFile) => !remainingExistingFilePaths.has(origFile.path)
       );
   
-      // 3. Perform storage operations sequentially and safely.
-      // A. Delete files
-      if (filesToDelete.length > 0) {
-        await Promise.all(filesToDelete.map(f => deleteFile(f.path)));
-      }
+      // 3. Perform storage operations
+      // A. Delete files that were removed
+      await Promise.all(filesToDelete.map(f => deleteFile(f.path)));
       
       // B. Upload new files
       const newlyUploadedFiles = await Promise.all(newFilesToUpload.map(f => uploadFile(f, projectId)));
@@ -175,12 +170,6 @@ export function DataProvider({ children }: { children: ReactNode }) {
         ...formData,
         files: finalFilesForFirestore,
       });
-
-    } catch (error) {
-      console.error("A critical error occurred during project update:", error);
-      // Re-throw the error so the form can catch it and display a message.
-      throw error;
-    }
   };
 
 
