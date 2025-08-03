@@ -43,7 +43,7 @@ export function ProjectForm({ project, onFinished }: ProjectFormProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Display state for UI rendering
+  // Separate state for UI rendering of existing files
   const [displayFiles, setDisplayFiles] = useState<ProjectFile[]>([]);
   // State for new file objects to be uploaded
   const [newFiles, setNewFiles] = useState<FileWithId[]>([]);
@@ -77,8 +77,7 @@ export function ProjectForm({ project, onFinished }: ProjectFormProps) {
     try {
       const filesToUpload = newFiles.map(fwid => fwid.file);
       if (project) {
-        // Pass the original project data, not the mutated display state
-        await updateProject(project, filesToUpload, filesToDelete);
+        await updateProject(project, data, filesToUpload, filesToDelete);
         toast({ title: 'Obra atualizada!', description: 'Os dados da obra foram salvos.' });
       } else {
         await addProject(data, filesToUpload);
@@ -112,9 +111,7 @@ export function ProjectForm({ project, onFinished }: ProjectFormProps) {
   };
   
   const handleRemoveExistingFile = (fileToRemove: ProjectFile) => {
-    // Just update the UI state
     setDisplayFiles(prev => prev.filter(file => file.path !== fileToRemove.path));
-    // Add to the list of files to be deleted on submit
     setFilesToDelete(prev => [...prev, fileToRemove]);
   };
 

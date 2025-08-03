@@ -12,7 +12,7 @@ interface DataContextType {
   data: AppData;
   loading: boolean;
   addProject: (project: Omit<Project, 'id' | 'files'>, files: File[]) => Promise<void>;
-  updateProject: (project: Project, newFiles: File[], filesToDelete: ProjectFile[]) => Promise<void>;
+  updateProject: (project: Project, formData: Omit<Project, 'id' | 'files'>, newFiles: File[], filesToDelete: ProjectFile[]) => Promise<void>;
   deleteProject: (projectId: string) => Promise<void>;
   addEmployee: (employee: Omit<Employee, 'id'>) => Promise<void>;
   updateEmployee: (employee: Employee) => Promise<void>;
@@ -101,8 +101,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
   };
 
   const deleteFile = async (file: ProjectFile) => {
-    if (!file || !file.path) {
-        // This check prevents the error but the root cause should be fixed.
+    if (!file?.path) {
         console.error("Invalid file path provided for deletion.");
         return;
     }
@@ -132,28 +131,26 @@ export function DataProvider({ children }: { children: ReactNode }) {
     await setDoc(projectRef, { ...project, files: uploadedFiles });
   };
   
-  const updateProject = async (originalProject: Project, newFilesToUpload: File[], filesToDelete: ProjectFile[]) => {
-    const { id, ...projectData } = originalProject;
-    
-    // 1. Delete files from Storage
+  const updateProject = async (project: Project, formData: Omit<Project, 'id' | 'files'>, newFiles: File[], filesToDelete: ProjectFile[]) => {
+    // 1. Delete files from Storage that were marked for deletion
     await Promise.all(filesToDelete.map(file => deleteFile(file)));
-    
+
     // 2. Upload new files to Storage
-    const uploadedFiles = await Promise.all(newFilesToUpload.map(file => uploadFile(file, id)));
+    const uploadedFiles = await Promise.all(newFiles.map(file => uploadFile(file, project.id)));
 
-    // 3. Calculate the final list of files for Firestore
-    // Start with the original files, remove the deleted ones, and add the new ones.
-    const remainingFiles = projectData.files.filter(
-        (originalFile) => !filesToDelete.some((deletedFile) => deletedFile.path === originalFile.path)
+    // 3. Create the final list of files for Firestore
+    const remainingOldFiles = project.files.filter(
+      (originalFile) => !filesToDelete.some((deletedFile) => deletedFile.path === originalFile.path)
     );
-    
-    const finalFiles = [...remainingFiles, ...uploadedFiles];
+    const finalFiles = [...remainingOldFiles, ...uploadedFiles];
 
-    // 4. Update the project document in Firestore
-    const projectDocRef = doc(db, 'projects', id);
-    await updateDoc(projectDocRef, { ...projectData, files: finalFiles });
+    // 4. Update the project document in Firestore with the form data and the new file list
+    const projectDocRef = doc(db, 'projects', project.id);
+    await updateDoc(projectDocRef, {
+      ...formData,
+      files: finalFiles
+    });
   };
-
 
   const deleteProject = async (projectId: string) => {
     await deleteDoc(doc(db, 'projects', projectId));
