@@ -40,6 +40,7 @@ export function ProjectForm({ project, onFinished }: ProjectFormProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // This state holds the list of files to be displayed and eventually saved.
+  // It can contain existing ProjectFile objects or new File objects.
   const [currentFiles, setCurrentFiles] = useState<(ProjectFile | File)[]>([]);
 
   const defaultValues: Partial<ProjectFormValues> = project
@@ -62,14 +63,14 @@ export function ProjectForm({ project, onFinished }: ProjectFormProps) {
     form.reset(defaultValues);
     setCurrentFiles(project?.files || []);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [project, form.reset]);
+  }, [project]);
 
 
   const onSubmit = async (data: ProjectFormValues) => {
     setIsSubmitting(true);
     try {
       if (project) {
-        // We pass the original files and the new desired state to updateProject
+        // Pass the original files and the new desired state to updateProject
         await updateProject(project.id, data, project.files || [], currentFiles);
         toast({ title: 'Obra atualizada!', description: 'Os dados da obra foram salvos.' });
       } else {
@@ -230,7 +231,7 @@ export function ProjectForm({ project, onFinished }: ProjectFormProps) {
               <FormItem>
                 <FormLabel>Documentos da Obra</FormLabel>
                  <div className="space-y-2 mt-2">
-                    {currentFiles.map((file, index) => {
+                    {currentFiles.map((file) => {
                         const isNew = file instanceof File;
                         // This key generation is now robust and solves the warning.
                         const key = isNew 
