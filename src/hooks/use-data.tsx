@@ -101,6 +101,10 @@ export function DataProvider({ children }: { children: ReactNode }) {
   };
 
   const deleteFile = async (file: ProjectFile) => {
+    if (!file || !file.path) {
+      console.error('Invalid file path provided for deletion.');
+      return;
+    }
     const storageRef = ref(storage, file.path);
     await deleteObject(storageRef);
   };
