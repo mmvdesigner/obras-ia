@@ -28,7 +28,6 @@ const projectSchema = z.object({
 
 type ProjectFormValues = z.infer<typeof projectSchema>;
 
-// Add a temporary unique ID to the File object for stable keys
 type FileWithId = {
   id: string;
   file: File;
@@ -44,13 +43,16 @@ export function ProjectForm({ project, onFinished }: ProjectFormProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const [existingFiles, setExistingFiles] = useState<ProjectFile[]>([]);
+  // Display state for UI rendering
+  const [displayFiles, setDisplayFiles] = useState<ProjectFile[]>([]);
+  // State for new file objects to be uploaded
   const [newFiles, setNewFiles] = useState<FileWithId[]>([]);
+  // State for existing ProjectFile objects to be deleted
   const [filesToDelete, setFilesToDelete] = useState<ProjectFile[]>([]);
   
   useEffect(() => {
     if (project?.files) {
-      setExistingFiles(project.files);
+      setDisplayFiles(project.files);
     }
   }, [project]);
 
@@ -75,12 +77,8 @@ export function ProjectForm({ project, onFinished }: ProjectFormProps) {
     try {
       const filesToUpload = newFiles.map(fwid => fwid.file);
       if (project) {
-        const projectDataWithFiles = {
-          ...project,
-          ...data,
-          files: existingFiles,
-        };
-        await updateProject(projectDataWithFiles, filesToUpload, filesToDelete);
+        // Pass the original project data, not the mutated display state
+        await updateProject(project, filesToUpload, filesToDelete);
         toast({ title: 'Obra atualizada!', description: 'Os dados da obra foram salvos.' });
       } else {
         await addProject(data, filesToUpload);
@@ -114,7 +112,9 @@ export function ProjectForm({ project, onFinished }: ProjectFormProps) {
   };
   
   const handleRemoveExistingFile = (fileToRemove: ProjectFile) => {
-    setExistingFiles(prev => prev.filter(file => file.path !== fileToRemove.path));
+    // Just update the UI state
+    setDisplayFiles(prev => prev.filter(file => file.path !== fileToRemove.path));
+    // Add to the list of files to be deleted on submit
     setFilesToDelete(prev => [...prev, fileToRemove]);
   };
 
@@ -247,7 +247,7 @@ export function ProjectForm({ project, onFinished }: ProjectFormProps) {
                 <FormLabel>Documentos da Obra</FormLabel>
                  <div className="space-y-2 mt-2">
                     {/* List existing files */}
-                    {existingFiles.map((file, index) => (
+                    {displayFiles.map((file, index) => (
                       <div key={`${file.path}-${index}`} className="flex items-center justify-between rounded-md border p-2">
                         <div className="flex items-center gap-2 overflow-hidden">
                           <FileText className="h-4 w-4 text-muted-foreground flex-shrink-0" />

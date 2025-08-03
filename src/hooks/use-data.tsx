@@ -101,6 +101,11 @@ export function DataProvider({ children }: { children: ReactNode }) {
   };
 
   const deleteFile = async (file: ProjectFile) => {
+    if (!file || !file.path) {
+        // This check prevents the error but the root cause should be fixed.
+        console.error("Invalid file path provided for deletion.");
+        return;
+    }
     const storageRef = ref(storage, file.path);
     await deleteObject(storageRef);
   };
@@ -127,18 +132,26 @@ export function DataProvider({ children }: { children: ReactNode }) {
     await setDoc(projectRef, { ...project, files: uploadedFiles });
   };
   
-  const updateProject = async (updatedProject: Project, newFiles: File[], filesToDelete: ProjectFile[]) => {
-    const { id, ...data } = updatedProject;
+  const updateProject = async (originalProject: Project, newFilesToUpload: File[], filesToDelete: ProjectFile[]) => {
+    const { id, ...projectData } = originalProject;
     
+    // 1. Delete files from Storage
     await Promise.all(filesToDelete.map(file => deleteFile(file)));
-    const uploadedFiles = await Promise.all(newFiles.map(file => uploadFile(file, id)));
+    
+    // 2. Upload new files to Storage
+    const uploadedFiles = await Promise.all(newFilesToUpload.map(file => uploadFile(file, id)));
 
-    const remainingFiles = data.files.filter(
-        (file) => !filesToDelete.some((deletedFile) => deletedFile.path === file.path)
+    // 3. Calculate the final list of files for Firestore
+    // Start with the original files, remove the deleted ones, and add the new ones.
+    const remainingFiles = projectData.files.filter(
+        (originalFile) => !filesToDelete.some((deletedFile) => deletedFile.path === originalFile.path)
     );
     
     const finalFiles = [...remainingFiles, ...uploadedFiles];
-    await setDoc(doc(db, 'projects', id), { ...data, files: finalFiles }, { merge: true });
+
+    // 4. Update the project document in Firestore
+    const projectDocRef = doc(db, 'projects', id);
+    await updateDoc(projectDocRef, { ...projectData, files: finalFiles });
   };
 
 
