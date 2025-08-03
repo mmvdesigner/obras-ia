@@ -11,8 +11,8 @@ import { useAuth } from './use-auth';
 interface DataContextType {
   data: AppData;
   loading: boolean;
-  addProject: (project: Omit<Project, 'id' | 'files'>, files: File[]) => Promise<void>;
-  updateProject: (projectId: string, formData: Omit<Project, 'id' | 'files'>, originalFiles: ProjectFile[], finalFileState: (File | ProjectFile)[]) => Promise<void>;
+  addProject: (projectData: Omit<Project, 'id' | 'files'>, filesToUpload: File[]) => Promise<void>;
+  updateProject: (projectId: string, formData: Omit<Project, 'id' | 'files'>, originalFiles: ProjectFile[], currentFiles: (ProjectFile | File)[]) => Promise<void>;
   deleteProject: (projectId: string) => Promise<void>;
   addEmployee: (employee: Omit<Employee, 'id'>) => Promise<void>;
   updateEmployee: (employee: Employee) => Promise<void>;
@@ -89,33 +89,6 @@ export function DataProvider({ children }: { children: ReactNode }) {
     initializeData();
   }, [seedDatabase]);
 
-
-  const uploadFile = async (file: File, projectId: string): Promise<ProjectFile> => {
-    const filePath = `projects/${projectId}/${Date.now()}_${file.name}`;
-    const storageRef = ref(storage, filePath);
-    await uploadBytes(storageRef, file);
-    const url = await getDownloadURL(storageRef);
-    return { name: file.name, url, path: filePath };
-  };
-
-  const deleteFile = async (filePath: string) => {
-    if (!filePath) {
-        console.warn("Attempted to delete a file with an empty or invalid path:", filePath);
-        return;
-    }
-    const storageRef = ref(storage, filePath);
-    try {
-        await deleteObject(storageRef);
-    } catch (error: any) {
-        if (error.code === 'storage/object-not-found') {
-            console.log(`File not found, likely already deleted: ${filePath}`);
-        } else {
-            console.error("Failed to delete file from storage:", error);
-            throw error;
-        }
-    }
-  };
-
   const updateUser = async (updatedUser: User) => {
     if (!updatedUser.id) {
       console.error("Cannot update user without an ID.");
@@ -131,45 +104,77 @@ export function DataProvider({ children }: { children: ReactNode }) {
   }
 
   const addProject = async (projectData: Omit<Project, 'id' | 'files'>, filesToUpload: File[]) => {
-    const projectRef = doc(collection(db, 'projects'));
-    const uploadedFiles = await Promise.all(
-        filesToUpload.map(file => uploadFile(file, projectRef.id))
-    );
-    await setDoc(projectRef, { ...projectData, files: uploadedFiles });
+    // Create the document first to get an ID
+    const newProjectRef = await addDoc(collection(db, 'projects'), { ...projectData, files: [] });
+    const projectId = newProjectRef.id;
+
+    const uploadedFiles: ProjectFile[] = [];
+    for (const file of filesToUpload) {
+      const storagePath = `projects/${projectId}/${Date.now()}-${file.name}`;
+      const fileRef = ref(storage, storagePath);
+      await uploadBytes(fileRef, file);
+      const url = await getDownloadURL(fileRef);
+      uploadedFiles.push({ name: file.name, url, path: storagePath });
+    }
+
+    // Now update the document with the file URLs
+    await updateDoc(newProjectRef, { files: uploadedFiles });
   };
   
   const updateProject = async (
     projectId: string, 
     formData: Omit<Project, 'id' | 'files'>, 
     originalFiles: ProjectFile[], 
-    finalFileState: (File | ProjectFile)[]
+    currentFiles: (ProjectFile | File)[]
   ) => {
-      // 1. Identify which files are new and which are existing
-      const newFilesToUpload = finalFileState.filter((f): f is File => f instanceof File);
-      const remainingExistingFiles = finalFileState.filter((f): f is ProjectFile => !(f instanceof File));
-      const remainingExistingFilePaths = new Set(remainingExistingFiles.map(f => f.path));
-  
-      // 2. Identify which of the original files should be deleted from storage
-      const filesToDelete = originalFiles.filter(
-        (origFile) => !remainingExistingFilePaths.has(origFile.path)
+    try {
+      // 1. Identify files to delete
+      const currentFilePaths = new Set(
+        currentFiles.filter((f): f is ProjectFile => !(f instanceof File)).map(f => f.path)
       );
-  
-      // 3. Perform storage operations
-      // A. Delete files that were removed
-      await Promise.all(filesToDelete.map(f => deleteFile(f.path)));
-      
-      // B. Upload new files
-      const newlyUploadedFiles = await Promise.all(newFilesToUpload.map(f => uploadFile(f, projectId)));
-  
-      // 4. Construct the final list of file objects for Firestore.
-      const finalFilesForFirestore = [...remainingExistingFiles, ...newlyUploadedFiles];
-  
-      // 5. Update Firestore with the new form data and the final file list.
+      const filesToDelete = originalFiles.filter(orig => !currentFilePaths.has(orig.path));
+
+      // 2. Delete files from Storage
+      await Promise.all(filesToDelete.map(async (file) => {
+        if (file.path) {
+          const fileRef = ref(storage, file.path);
+          await deleteObject(fileRef);
+        }
+      }));
+
+      // 3. Identify and upload new files
+      const newFilesToUpload = currentFiles.filter((f): f is File => f instanceof File);
+      const uploadedFiles: ProjectFile[] = [];
+
+      for (const file of newFilesToUpload) {
+        const storagePath = `projects/${projectId}/${Date.now()}-${file.name}`;
+        const fileRef = ref(storage, storagePath);
+        await uploadBytes(fileRef, file);
+        const downloadURL = await getDownloadURL(fileRef);
+        uploadedFiles.push({
+          name: file.name,
+          url: downloadURL,
+          path: storagePath,
+        });
+      }
+
+      // 4. Consolidate the final list of files for Firestore
+      const finalFiles: ProjectFile[] = [
+        ...currentFiles.filter((f): f is ProjectFile => !(f instanceof File)),
+        ...uploadedFiles,
+      ];
+
+      // 5. Update Firestore with new data and the final file list
       const projectDocRef = doc(db, 'projects', projectId);
       await updateDoc(projectDocRef, {
         ...formData,
-        files: finalFilesForFirestore,
+        files: finalFiles,
       });
+
+    } catch (error) {
+      console.error("Error updating project:", error);
+      throw error; // Re-throw the error to be caught by the form's submit handler
+    }
   };
 
 

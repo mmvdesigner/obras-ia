@@ -56,10 +56,18 @@ export function ProjectForm({ project, onFinished }: ProjectFormProps) {
   });
 
   useEffect(() => {
-    form.reset(defaultValues);
-    setCurrentFiles(project?.files || []);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [project, form.reset]);
+    if (project) {
+        form.reset({
+            ...project,
+            startDate: project.startDate.split('T')[0],
+            endDate: project.endDate.split('T')[0],
+        });
+        setCurrentFiles(project.files || []);
+    } else {
+        form.reset({ status: 'planejamento' });
+        setCurrentFiles([]);
+    }
+  }, [project, form]);
 
 
   const onSubmit = async (data: ProjectFormValues) => {
@@ -227,10 +235,10 @@ export function ProjectForm({ project, onFinished }: ProjectFormProps) {
                  <div className="space-y-2 mt-2">
                     {currentFiles.map((file, index) => {
                         const isNew = file instanceof File;
-                        const key = isNew 
-                          ? `${file.name}-${index}` 
-                          : file.path;
                         const name = isNew ? file.name : file.name;
+                        const key = isNew 
+                          ? `${file.name}-${file.lastModified}-${index}` 
+                          : file.path;
                         const title = isNew ? `${file.name} (novo)` : file.name;
 
                         return (
@@ -274,5 +282,3 @@ export function ProjectForm({ project, onFinished }: ProjectFormProps) {
     </Form>
   );
 }
-
-    
