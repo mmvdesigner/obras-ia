@@ -10,15 +10,19 @@ export default function HomePage() {
   const router = useRouter();
 
   useEffect(() => {
+    // We only want to redirect when the loading state is false.
     if (!loading) {
       if (user) {
+        // If there's a user, they should be on the dashboard.
         router.push('/dashboard');
       } else {
+        // If there's no user, they should be on the login page.
         router.push('/login');
       }
     }
   }, [user, loading, router]);
 
+  // While loading, show a skeleton screen. This prevents flashes of content.
   return (
     <div className="flex h-screen w-screen items-center justify-center">
       <div className="flex flex-col items-center gap-4">

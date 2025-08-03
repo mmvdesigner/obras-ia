@@ -30,7 +30,7 @@ const DataContext = createContext<DataContextType | undefined>(undefined);
 export function DataProvider({ children }: { children: ReactNode }) {
   const { user, loading: authLoading } = useAuth();
   const [data, setData] = useState<AppData>({
-    users: [], // users are now primarily handled by useAuth
+    users: [],
     projects: [],
     employees: [],
     expenses: [],
@@ -38,6 +38,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     inventory: [],
   });
   const [loading, setLoading] = useState(true);
+  const [isSeeded, setIsSeeded] = useState(false);
 
   // This function seeds the database with initial project data if it's empty.
   // It runs independently of user authentication.
@@ -47,11 +48,9 @@ export function DataProvider({ children }: { children: ReactNode }) {
     const projectsSnapshot = await getDocs(projectsQuery);
 
     if (projectsSnapshot.empty) {
-        console.log("Database is empty. Seeding with initial data...");
+        console.log("Project collections are empty. Seeding with initial data...");
         const batch = writeBatch(db);
         
-        // Note: Users are now seeded in use-auth.tsx on first login.
-        // Seeding other collections here.
         initialData.projects.forEach((item: Project) => {
             const docRef = doc(db, "projects", item.id);
             const {id, ...itemData} = item;
@@ -74,7 +73,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
         });
         initialData.inventory.forEach((item: InventoryItem) => {
             const docRef = doc(db, "inventory", item.id);
-            const {id, ...itemData} = item;
+            const {id, ...itemData}_ = item;
             batch.set(docRef, itemData);
         });
 
@@ -83,16 +82,18 @@ export function DataProvider({ children }: { children: ReactNode }) {
     } else {
         console.log("Database already has data. No seeding required.");
     }
+    setIsSeeded(true);
   }, []);
 
 
   useEffect(() => {
-    // We can seed the DB as soon as the provider loads.
-    seedDatabase();
-
-    // Only set up data listeners if auth is done and we have a user.
-    if (!authLoading && user) {
-      const collections: (keyof AppData)[] = ['projects', 'employees', 'expenses', 'tasks', 'inventory', 'users'];
+    if (!isSeeded) {
+        seedDatabase();
+    }
+    
+    // Only set up data listeners if seeding is done and we have a user.
+    if (isSeeded && !authLoading && user) {
+      const collections: (keyof Omit<AppData, 'users'>)[] = ['projects', 'employees', 'expenses', 'tasks', 'inventory'];
       const unsubscribes = collections.map(collectionName => {
         return onSnapshot(collection(db, collectionName), (snapshot) => {
           const items = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as any;
@@ -101,6 +102,14 @@ export function DataProvider({ children }: { children: ReactNode }) {
           console.error(`Error fetching ${collectionName}:`, error);
         });
       });
+
+      // Also listen to users collection
+      const unsubUsers = onSnapshot(collection(db, 'users'), (snapshot) => {
+          const users = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as any;
+          setData(prevData => ({ ...prevData, users }));
+      });
+      unsubscribes.push(unsubUsers);
+
 
       setLoading(false); // Data loading is complete
       
@@ -118,7 +127,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
         inventory: [],
       })
     }
-  }, [user, authLoading, seedDatabase]);
+  }, [user, authLoading, isSeeded, seedDatabase]);
 
 
   // Firestore operations
@@ -151,7 +160,6 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const addExpense = async (expense: Omit<Expense, 'id'>) => {
       const docRef = await addDoc(collection(db, 'expenses'), expense);
       
-      // Update inventory
       if (expense.category === 'material' && expense.materialName && expense.quantity && expense.unitPrice) {
           const inventoryQuery = query(collection(db, 'inventory'), where('projectId', '==', expense.projectId), where('name', '==', expense.materialName));
           const inventorySnapshot = await getDocs(inventoryQuery);

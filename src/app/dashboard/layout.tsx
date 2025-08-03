@@ -26,6 +26,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const isLoading = authLoading || dataLoading;
 
   useEffect(() => {
+    // If both hooks are done loading and there's still no user, redirect to login.
     if (!authLoading && !user) {
       router.push('/login');
     }
@@ -37,7 +38,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   
   if (!user) {
     // This can be a brief flash while redirecting, or a fallback.
-    return <div className="flex h-screen w-screen items-center justify-center">Redirecionando...</div>;
+    return null;
   }
   
   return (

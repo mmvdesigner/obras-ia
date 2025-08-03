@@ -22,9 +22,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
-  const auth = getAuth();
 
   useEffect(() => {
+    const auth = getAuth();
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser: FirebaseUser | null) => {
       if (firebaseUser) {
         setLoading(true);
@@ -35,16 +35,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           const userData = { id: userDoc.id, ...userDoc.data() } as User;
           setUser(userData);
         } else {
-          // User is authenticated in Firebase, but no profile in Firestore.
-          // Let's create one.
-          console.log(`User with UID ${firebaseUser.uid} not found in Firestore. Creating profile...`);
+          // User is authenticated, but no profile in Firestore. Let's create one.
+          console.log(`User with UID ${firebaseUser.uid} not found in Firestore. Attempting to create profile...`);
           const seedUser = initialData.users.find(u => u.id === firebaseUser.uid);
           if (seedUser) {
             const { id, ...userData } = seedUser;
-            await setDoc(userDocRef, userData);
-            const newUserDoc = await getDoc(userDocRef);
-            setUser({ id: newUserDoc.id, ...newUserDoc.data() } as User);
-            console.log("User profile created successfully.");
+            try {
+              await setDoc(userDocRef, userData);
+              const newUserDoc = await getDoc(userDocRef);
+              setUser({ id: newUserDoc.id, ...newUserDoc.data() } as User);
+              console.log("User profile created successfully.");
+            } catch (e) {
+                console.error("Error creating user profile in Firestore: ", e);
+                await signOut(auth); // Log out if profile creation fails
+                setUser(null);
+            }
           } else {
              console.error(`Authenticated user with UID ${firebaseUser.uid} not found in seed data. Logging out.`);
              await signOut(auth);
@@ -58,10 +63,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
 
     return () => unsubscribe();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const login = async (email: string, pass: string): Promise<boolean> => {
+    const auth = getAuth();
     try {
       await signInWithEmailAndPassword(auth, email, pass);
       // onAuthStateChanged will handle setting the user state and profile creation
@@ -73,9 +78,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const logout = async () => {
+    const auth = getAuth();
     try {
       await signOut(auth);
-      // onAuthStateChanged will set user to null
       router.push('/login');
     } catch (error) {
       console.error("Logout failed:", error);
@@ -83,6 +88,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const updateUser = useCallback(async (updatedUser: User) => {
+    if (!updatedUser.id) {
+        console.error("Cannot update user without an ID.");
+        return;
+    }
      try {
       const { id, ...userData } = updatedUser;
       const userDocRef = doc(db, 'users', id);
