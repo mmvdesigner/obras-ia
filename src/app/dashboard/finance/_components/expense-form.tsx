@@ -103,7 +103,7 @@ export function ExpenseForm({ expense, onFinished, projectId }: ExpenseFormProps
   return (
     <Form {...form}>
        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-        <ScrollArea className="h-[60vh] max-h-[60vh] md:max-h-none md:h-auto">
+        <ScrollArea className="h-[70vh] max-h-[70vh] md:max-h-none md:h-auto">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pr-6">
                 <div className="md:col-span-2">
                     <FormField

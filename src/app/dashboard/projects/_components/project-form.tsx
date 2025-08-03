@@ -28,10 +28,6 @@ const projectSchema = z.object({
 
 type ProjectFormValues = z.infer<typeof projectSchema>;
 
-type FileWithId = {
-  id: string;
-  file: File;
-};
 interface ProjectFormProps {
   project?: Project | null;
   onFinished: () => void;
@@ -46,9 +42,9 @@ export function ProjectForm({ project, onFinished }: ProjectFormProps) {
   // State for files already uploaded (from `project.files`)
   const [existingFiles, setExistingFiles] = useState<ProjectFile[]>([]);
   // State for newly added files (from file input)
-  const [newFiles, setNewFiles] = useState<FileWithId[]>([]);
+  const [newFiles, setNewFiles] = useState<File[]>([]);
   // State for paths of existing files to be deleted
-  const [filesToDelete, setFilesToDelete] = useState<string[]>([]);
+  const [filesToDelete, setFilesToDelete] = useState<ProjectFile[]>([]);
   
   useEffect(() => {
     // When the project prop changes (e.g., when opening the dialog), reset the state
@@ -89,10 +85,10 @@ export function ProjectForm({ project, onFinished }: ProjectFormProps) {
     try {
       if (project) {
         // Pass the original project, the form data, new files, and paths of files to delete
-        await updateProject(project, data, newFiles.map(f => f.file), filesToDelete);
+        await updateProject(project, data, newFiles, filesToDelete);
         toast({ title: 'Obra atualizada!', description: 'Os dados da obra foram salvos.' });
       } else {
-        await addProject(data, newFiles.map(f => f.file));
+        await addProject(data, newFiles);
         toast({ title: 'Obra criada!', description: 'A nova obra foi adicionada com sucesso.' });
       }
       onFinished();
@@ -107,28 +103,22 @@ export function ProjectForm({ project, onFinished }: ProjectFormProps) {
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
     if (files) {
-      const filesWithIds: FileWithId[] = Array.from(files).map(file => ({
-          id: `${file.name}-${file.lastModified}-${Math.random()}`,
-          file,
-      }));
-      setNewFiles(prev => [...prev, ...filesWithIds]);
+      setNewFiles(prev => [...prev, ...Array.from(files)]);
     }
     if (event.target) {
       event.target.value = ''; // Reset the input to allow re-uploading the same file
     }
   };
 
-  const handleRemoveNewFile = (idToRemove: string) => {
-    setNewFiles(prev => prev.filter((fwid) => fwid.id !== idToRemove));
+  const handleRemoveNewFile = (indexToRemove: number) => {
+    setNewFiles(prev => prev.filter((_, index) => index !== indexToRemove));
   };
   
   const handleRemoveExistingFile = (fileToRemove: ProjectFile) => {
     // Remove from the display list
     setExistingFiles(prev => prev.filter(file => file.path !== fileToRemove.path));
     // Add its path to the deletion list
-    if (fileToRemove.path) {
-      setFilesToDelete(prev => [...prev, fileToRemove.path]);
-    }
+    setFilesToDelete(prev => [...prev, fileToRemove]);
   };
 
   return (
@@ -272,13 +262,13 @@ export function ProjectForm({ project, onFinished }: ProjectFormProps) {
                       </div>
                     ))}
                     {/* List new files to be uploaded */}
-                    {newFiles.map((fwid) => (
-                       <div key={fwid.id} className="flex items-center justify-between rounded-md border border-dashed p-2">
+                    {newFiles.map((file, index) => (
+                       <div key={`${file.name}-${index}`} className="flex items-center justify-between rounded-md border border-dashed p-2">
                           <div className="flex items-center gap-2 overflow-hidden">
                               <FileText className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                              <span className="text-sm italic truncate" title={fwid.file.name}>{fwid.file.name} (novo)</span>
+                              <span className="text-sm italic truncate" title={file.name}>{file.name} (novo)</span>
                           </div>
-                          <Button type="button" variant="ghost" size="icon" onClick={() => handleRemoveNewFile(fwid.id)}>
+                          <Button type="button" variant="ghost" size="icon" onClick={() => handleRemoveNewFile(index)}>
                               <Trash2 className="h-4 w-4 text-destructive" />
                           </Button>
                       </div>
