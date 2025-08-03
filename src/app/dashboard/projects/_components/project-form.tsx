@@ -43,16 +43,21 @@ export function ProjectForm({ project, onFinished }: ProjectFormProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // State for files already uploaded (from `project.files`)
   const [existingFiles, setExistingFiles] = useState<ProjectFile[]>([]);
+  // State for newly added files (from file input)
   const [newFiles, setNewFiles] = useState<FileWithId[]>([]);
+  // State for paths of existing files to be deleted
   const [filesToDelete, setFilesToDelete] = useState<string[]>([]);
   
   useEffect(() => {
+    // When the project prop changes (e.g., when opening the dialog), reset the state
     if (project?.files) {
       setExistingFiles(project.files);
     } else {
       setExistingFiles([]);
     }
+    // Always clear new files and deletion list when the form is opened
     setNewFiles([]);
     setFilesToDelete([]);
   }, [project]);
@@ -83,6 +88,7 @@ export function ProjectForm({ project, onFinished }: ProjectFormProps) {
     setIsSubmitting(true);
     try {
       if (project) {
+        // Pass the original project, the form data, new files, and paths of files to delete
         await updateProject(project, data, newFiles.map(f => f.file), filesToDelete);
         toast({ title: 'Obra atualizada!', description: 'Os dados da obra foram salvos.' });
       } else {
@@ -108,16 +114,18 @@ export function ProjectForm({ project, onFinished }: ProjectFormProps) {
       setNewFiles(prev => [...prev, ...filesWithIds]);
     }
     if (event.target) {
-      event.target.value = '';
+      event.target.value = ''; // Reset the input to allow re-uploading the same file
     }
   };
 
-  const handleRemoveNewFile = (id: string) => {
-    setNewFiles(prev => prev.filter((fwid) => fwid.id !== id));
+  const handleRemoveNewFile = (idToRemove: string) => {
+    setNewFiles(prev => prev.filter((fwid) => fwid.id !== idToRemove));
   };
   
   const handleRemoveExistingFile = (fileToRemove: ProjectFile) => {
+    // Remove from the display list
     setExistingFiles(prev => prev.filter(file => file.path !== fileToRemove.path));
+    // Add its path to the deletion list
     if (fileToRemove.path) {
       setFilesToDelete(prev => [...prev, fileToRemove.path]);
     }

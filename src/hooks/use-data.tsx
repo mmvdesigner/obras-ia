@@ -101,10 +101,9 @@ export function DataProvider({ children }: { children: ReactNode }) {
   };
 
   const deleteFile = async (filePath: string) => {
-    if (filePath) {
-      const storageRef = ref(storage, filePath);
-      await deleteObject(storageRef);
-    }
+    if (!filePath) return;
+    const storageRef = ref(storage, filePath);
+    await deleteObject(storageRef);
   };
 
   const updateUser = async (updatedUser: User) => {
@@ -129,23 +128,25 @@ export function DataProvider({ children }: { children: ReactNode }) {
     await setDoc(projectRef, { ...project, files: uploadedFiles });
   };
   
-  const updateProject = async (project: Project, formData: Omit<Project, 'id' | 'files'>, newFiles: File[], filesToDeletePaths: string[]) => {
+  const updateProject = async (project: Project, formData: Omit<Project, 'id' | 'files'>, newFilesToUpload: File[], filesToDeletePaths: string[]) => {
     const projectDocRef = doc(db, 'projects', project.id);
   
-    // 1. Delete files from Storage
+    // 1. Delete files from Storage that were marked for deletion
     const deletePromises = filesToDeletePaths.map(path => deleteFile(path));
     await Promise.all(deletePromises);
   
     // 2. Upload new files to Storage
-    const uploadPromises = newFiles.map(file => uploadFile(file, project.id));
-    const uploadedFiles = await Promise.all(uploadPromises);
+    const uploadPromises = newFilesToUpload.map(file => uploadFile(file, project.id));
+    const newUploadedFiles = await Promise.all(uploadPromises);
   
     // 3. Determine the final list of files for Firestore
     const originalFiles = project.files || [];
+    // Keep files that were not marked for deletion
     const remainingOldFiles = originalFiles.filter(
       (originalFile) => !filesToDeletePaths.includes(originalFile.path)
     );
-    const finalFiles = [...remainingOldFiles, ...uploadedFiles];
+    // Combine the remaining old files with the new ones
+    const finalFiles = [...remainingOldFiles, ...newUploadedFiles];
   
     // 4. Create the final object and update Firestore
     const dataToUpdate = {
