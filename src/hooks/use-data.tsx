@@ -104,21 +104,30 @@ export function DataProvider({ children }: { children: ReactNode }) {
   }
 
   const addProject = async (projectData: Omit<Project, 'id' | 'files'>, filesToUpload: File[]) => {
-    // Create the document first to get an ID
-    const newProjectRef = await addDoc(collection(db, 'projects'), { ...projectData, files: [] });
-    const projectId = newProjectRef.id;
+    try {
+        const newProjectRef = await addDoc(collection(db, 'projects'), { ...projectData, files: [] });
+        const projectId = newProjectRef.id;
 
-    const uploadedFiles: ProjectFile[] = [];
-    for (const file of filesToUpload) {
-      const storagePath = `projects/${projectId}/${Date.now()}-${file.name}`;
-      const fileRef = ref(storage, storagePath);
-      await uploadBytes(fileRef, file);
-      const url = await getDownloadURL(fileRef);
-      uploadedFiles.push({ name: file.name, url, path: storagePath });
+        const uploadedFiles: ProjectFile[] = [];
+        for (const file of filesToUpload) {
+            try {
+                const storagePath = `projects/${projectId}/${Date.now()}-${file.name}`;
+                const fileRef = ref(storage, storagePath);
+                await uploadBytes(fileRef, file);
+                const url = await getDownloadURL(fileRef);
+                uploadedFiles.push({ name: file.name, url, path: storagePath });
+            } catch (err) {
+                console.error(`Error uploading file ${file.name}:`, err);
+                throw new Error(`Failed to upload file "${file.name}". Please try again.`);
+            }
+        }
+
+        await updateDoc(newProjectRef, { files: uploadedFiles });
+    } catch (error) {
+        console.error("Error creating project:", error);
+        // Re-throw the error to be caught by the form's submit handler
+        throw error;
     }
-
-    // Now update the document with the file URLs
-    await updateDoc(newProjectRef, { files: uploadedFiles });
   };
   
   const updateProject = async (
@@ -128,43 +137,52 @@ export function DataProvider({ children }: { children: ReactNode }) {
     currentFiles: (ProjectFile | File)[]
   ) => {
     try {
-      // 1. Identify files to delete
+      // 1. Identify files to delete by comparing original and current lists.
       const currentFilePaths = new Set(
         currentFiles.filter((f): f is ProjectFile => !(f instanceof File)).map(f => f.path)
       );
       const filesToDelete = originalFiles.filter(orig => !currentFilePaths.has(orig.path));
 
-      // 2. Delete files from Storage
-      await Promise.all(filesToDelete.map(async (file) => {
-        if (file.path) {
-          const fileRef = ref(storage, file.path);
-          await deleteObject(fileRef);
+      // 2. Delete files from Storage.
+      for (const file of filesToDelete) {
+        try {
+            const fileRef = ref(storage, file.path);
+            await deleteObject(fileRef);
+        } catch (err) {
+            console.error(`Error deleting file ${file.path}:`, err);
+            // Optionally decide if this should stop the whole process
         }
-      }));
+      }
 
-      // 3. Identify and upload new files
+      // 3. Identify and upload new files.
       const newFilesToUpload = currentFiles.filter((f): f is File => f instanceof File);
       const uploadedFiles: ProjectFile[] = [];
 
       for (const file of newFilesToUpload) {
-        const storagePath = `projects/${projectId}/${Date.now()}-${file.name}`;
-        const fileRef = ref(storage, storagePath);
-        await uploadBytes(fileRef, file);
-        const downloadURL = await getDownloadURL(fileRef);
-        uploadedFiles.push({
-          name: file.name,
-          url: downloadURL,
-          path: storagePath,
-        });
+          try {
+            const storagePath = `projects/${projectId}/${Date.now()}-${file.name}`;
+            const fileRef = ref(storage, storagePath);
+            await uploadBytes(fileRef, file);
+            const downloadURL = await getDownloadURL(fileRef);
+            uploadedFiles.push({
+                name: file.name,
+                url: downloadURL,
+                path: storagePath,
+            });
+          } catch (err) {
+            console.error(`Error uploading file ${file.name}:`, err);
+            // Re-throw a more user-friendly error to be caught by the form
+            throw new Error(`Failed to upload file "${file.name}". Please try again.`);
+          }
       }
 
-      // 4. Consolidate the final list of files for Firestore
+      // 4. Consolidate the final list of files for Firestore.
       const finalFiles: ProjectFile[] = [
         ...currentFiles.filter((f): f is ProjectFile => !(f instanceof File)),
         ...uploadedFiles,
       ];
 
-      // 5. Update Firestore with new data and the final file list
+      // 5. Update Firestore with new data and the final file list.
       const projectDocRef = doc(db, 'projects', projectId);
       await updateDoc(projectDocRef, {
         ...formData,
@@ -173,7 +191,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
     } catch (error) {
       console.error("Error updating project:", error);
-      throw error; // Re-throw the error to be caught by the form's submit handler
+      // Re-throw the error to be caught by the form's submit handler
+      throw error; 
     }
   };
 

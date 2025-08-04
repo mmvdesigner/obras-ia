@@ -84,7 +84,8 @@ export function ProjectForm({ project, onFinished }: ProjectFormProps) {
       onFinished();
     } catch (error) {
       console.error("Failed to save project:", error);
-      toast({ variant: 'destructive', title: 'Erro!', description: `Não foi possível salvar a obra. Verifique o console para mais detalhes.` });
+      const errorMessage = error instanceof Error ? error.message : `Não foi possível salvar a obra.`;
+      toast({ variant: 'destructive', title: 'Erro!', description: errorMessage });
     } finally {
       setIsSubmitting(false);
     }
@@ -93,8 +94,15 @@ export function ProjectForm({ project, onFinished }: ProjectFormProps) {
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
     if (files) {
-      setCurrentFiles(prev => [...prev, ...Array.from(files)]);
+      const newFiles = Array.from(files);
+      setCurrentFiles(prev => {
+        // Prevent adding files with the same name as existing ones
+        const existingNames = new Set(prev.map(f => (f instanceof File ? f.name : f.name)));
+        const filteredNewFiles = newFiles.filter(f => !existingNames.has(f.name));
+        return [...prev, ...filteredNewFiles];
+      });
     }
+    // Reset the file input so the user can select the same file again if they remove it first
     if (event.target) {
       event.target.value = ''; 
     }
@@ -237,7 +245,7 @@ export function ProjectForm({ project, onFinished }: ProjectFormProps) {
                         const isNew = file instanceof File;
                         const name = isNew ? file.name : file.name;
                         const key = isNew 
-                          ? `${file.name}-${file.lastModified}-${index}` 
+                          ? `${file.name}-${index}` 
                           : file.path;
                         const title = isNew ? `${file.name} (novo)` : file.name;
 
