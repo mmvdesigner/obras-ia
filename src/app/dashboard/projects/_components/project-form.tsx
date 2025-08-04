@@ -28,8 +28,7 @@ const projectSchema = z.object({
 
 type ProjectFormValues = z.infer<typeof projectSchema>;
 
-// Wrapper to ensure new files have a unique ID for the key prop
-type FileListItem = ProjectFile | { id: string; file: File };
+type FileListItem = ProjectFile | File;
 
 interface ProjectFormProps {
   project?: Project | null;
@@ -76,13 +75,11 @@ export function ProjectForm({ project, onFinished }: ProjectFormProps) {
   const onSubmit = async (data: ProjectFormValues) => {
     setIsSubmitting(true);
     try {
-      const filesToUpload = currentFiles.filter((item): item is { id: string; file: File } => 'file' in item).map(item => item.file);
-      const existingFiles = currentFiles.filter((item): item is ProjectFile => !('file' in item));
-
       if (project) {
-        await updateProject(project.id, data, project.files || [], [...existingFiles, ...filesToUpload]);
+        await updateProject(project.id, data, project.files || [], currentFiles);
         toast({ title: 'Obra atualizada!', description: 'Os dados da obra foram salvos.' });
       } else {
+        const filesToUpload = currentFiles.filter((f): f is File => f instanceof File);
         await addProject(data, filesToUpload);
         toast({ title: 'Obra criada!', description: 'A nova obra foi adicionada com sucesso.' });
       }
@@ -102,10 +99,8 @@ export function ProjectForm({ project, onFinished }: ProjectFormProps) {
       const newFiles = Array.from(files);
       setCurrentFiles(prev => {
         // Prevent adding files with the same name as existing ones
-        const existingNames = new Set(prev.map(f => ('file' in f) ? f.file.name : f.name));
-        const filteredNewFiles = newFiles
-          .filter(f => !existingNames.has(f.name))
-          .map(file => ({ id: crypto.randomUUID(), file })); // Wrap new files with a unique ID
+        const existingNames = new Set(prev.map(f => f.name));
+        const filteredNewFiles = newFiles.filter(f => !existingNames.has(f.name));
         return [...prev, ...filteredNewFiles];
       });
     }
@@ -116,7 +111,7 @@ export function ProjectForm({ project, onFinished }: ProjectFormProps) {
   };
   
   const handleRemoveFile = (fileToRemove: FileListItem) => {
-    setCurrentFiles(prev => prev.filter(file => file.id !== fileToRemove.id));
+    setCurrentFiles(prev => prev.filter(file => file.name !== fileToRemove.name));
   };
 
 
@@ -248,10 +243,10 @@ export function ProjectForm({ project, onFinished }: ProjectFormProps) {
               <FormItem>
                 <FormLabel>Documentos da Obra</FormLabel>
                  <div className="space-y-2 mt-2">
-                    {currentFiles.map((item) => {
-                        const isNew = 'file' in item;
-                        const name = isNew ? item.file.name : item.name;
-                        const key = isNew ? item.id : item.path;
+                    {currentFiles.map((item, index) => {
+                        const isNew = item instanceof File;
+                        const name = item.name;
+                        const key = isNew ? `${item.name}-${index}` : (item as ProjectFile).path;
                         const title = isNew ? `${name} (novo)` : name;
 
                         return (

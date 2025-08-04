@@ -170,7 +170,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
             });
           } catch (err) {
             console.error(`Error uploading file ${file.name}:`, err);
-            // Re-throw a more user-friendly error to be caught by the form
+            // Re-throw a more user-friendly error to be caught by the form's submit handler
             throw new Error(`Failed to upload file "${file.name}". Please try again.`);
           }
       }
