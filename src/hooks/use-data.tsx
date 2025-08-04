@@ -12,7 +12,7 @@ interface DataContextType {
   data: AppData;
   loading: boolean;
   addProject: (projectData: Omit<Project, 'id' | 'files'>, filesToUpload: File[]) => Promise<void>;
-  updateProject: (projectId: string, formData: Omit<Project, 'id' | 'files'>, originalFiles: ProjectFile[], currentFiles: (ProjectFile | File)[]) => Promise<void>;
+  updateProject: (projectId: string, formData: Partial<Omit<Project, 'id' | 'files'>>, originalFiles: ProjectFile[], currentFiles: (ProjectFile | File)[]) => Promise<void>;
   deleteProject: (projectId: string) => Promise<void>;
   addEmployee: (employee: Omit<Employee, 'id'>) => Promise<void>;
   updateEmployee: (employee: Employee) => Promise<void>;
@@ -105,8 +105,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   const addProject = async (projectData: Omit<Project, 'id' | 'files'>, filesToUpload: File[]) => {
     try {
-        const newProjectRef = await addDoc(collection(db, 'projects'), { ...projectData, files: [] });
-        const projectId = newProjectRef.id;
+        const docRef = await addDoc(collection(db, 'projects'), { ...projectData, files: [] });
+        const projectId = docRef.id;
 
         const uploadedFiles: ProjectFile[] = [];
         for (const file of filesToUpload) {
@@ -122,17 +122,16 @@ export function DataProvider({ children }: { children: ReactNode }) {
             }
         }
 
-        await updateDoc(newProjectRef, { files: uploadedFiles });
+        await updateDoc(docRef, { files: uploadedFiles });
     } catch (error) {
         console.error("Error creating project:", error);
-        // Re-throw the error to be caught by the form's submit handler
         throw error;
     }
   };
   
   const updateProject = async (
     projectId: string, 
-    formData: Omit<Project, 'id' | 'files'>, 
+    formData: Partial<Omit<Project, 'id' | 'files'>>, 
     originalFiles: ProjectFile[], 
     currentFiles: (ProjectFile | File)[]
   ) => {
