@@ -29,7 +29,7 @@ const projectSchema = z.object({
 
 type ProjectFormValues = z.infer<typeof projectSchema>;
 
-// Helper type for new files added in the form
+// Helper types for managing files in the form state
 type NewFileItem = { id: string; file: File };
 type FileListItem = ProjectFile | NewFileItem;
 
@@ -119,14 +119,14 @@ export function ProjectForm({ project, onFinished }: ProjectFormProps) {
     }
   };
   
-  const handleRemoveFile = (fileToRemove: FileListItem) => {
-      if ('file' in fileToRemove) {
-          // It's a NewFileItem
-          setCurrentFiles(prev => prev.filter(item => 'file' in item ? item.id !== fileToRemove.id : true));
-      } else {
-          // It's a ProjectFile
-          setCurrentFiles(prev => prev.filter(item => 'path' in item ? item.path !== fileToRemove.path : true));
-      }
+  const handleRemoveFile = (fileIdToRemove: string) => {
+    setCurrentFiles(prev => prev.filter(item => {
+        if ('file' in item) { // It's a NewFileItem
+            return item.id !== fileIdToRemove;
+        } else { // It's a ProjectFile
+            return item.path !== fileIdToRemove;
+        }
+    }));
   };
 
 
@@ -261,7 +261,8 @@ export function ProjectForm({ project, onFinished }: ProjectFormProps) {
                     {currentFiles.map((item) => {
                         const isNew = 'file' in item;
                         const name = isNew ? item.file.name : item.name;
-                        const key = isNew ? item.id : item.path;
+                        // Use the stable unique ID for the key
+                        const key = isNew ? item.id : item.path; 
                         const title = isNew ? `${name} (novo)` : name;
 
                         return (
@@ -270,7 +271,7 @@ export function ProjectForm({ project, onFinished }: ProjectFormProps) {
                                     <FileText className="h-4 w-4 text-muted-foreground flex-shrink-0" />
                                     <span className={`text-sm truncate ${isNew ? 'italic' : ''}`} title={title}>{name}</span>
                                 </div>
-                                <Button type="button" variant="ghost" size="icon" onClick={() => handleRemoveFile(item)}>
+                                <Button type="button" variant="ghost" size="icon" onClick={() => handleRemoveFile(key)}>
                                     <Trash2 className="h-4 w-4 text-destructive" />
                                 </Button>
                             </div>

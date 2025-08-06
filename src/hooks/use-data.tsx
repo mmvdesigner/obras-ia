@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useCallback } from 'react';
@@ -150,6 +151,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
         } catch (err) {
             console.error(`Error deleting file ${file.path}:`, err);
             // Optionally decide if this should stop the whole process
+            throw new Error(`Failed to delete file "${file.name}". Please check permissions.`);
         }
       }
 
