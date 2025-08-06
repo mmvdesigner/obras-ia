@@ -10,7 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import type { Project, ProjectFile } from '@/lib/types';
-import { useData, NewFileItem } from '@/hooks/use-data';
+import { useData } from '@/hooks/use-data';
 import { useToast } from '@/hooks/use-toast';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { FileText, Trash2, Upload, Loader2 } from 'lucide-react';
@@ -29,7 +29,7 @@ const projectSchema = z.object({
 
 type ProjectFormValues = z.infer<typeof projectSchema>;
 
-type FileListItem = ProjectFile | NewFileItem;
+type FileListItem = ProjectFile | { id: string; file: File };
 
 interface ProjectFormProps {
   project?: Project | null;
@@ -41,7 +41,7 @@ export function ProjectForm({ project, onFinished }: ProjectFormProps) {
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [currentFiles, setCurrentFiles] = useState<FileListItem[]>([]);
+  const [currentFiles, setCurrentFiles] = useState<(ProjectFile | File)[]>([]);
 
   const defaultValues: Partial<ProjectFormValues> = project
     ? {
@@ -77,11 +77,11 @@ export function ProjectForm({ project, onFinished }: ProjectFormProps) {
     setIsSubmitting(true);
     try {
       if (project) {
-        await updateProject(project.id, data, project.files || [], currentFiles);
+        // Since file uploads are removed, we just pass the existing files
+        await updateProject(project.id, data, project.files || [], project.files || []);
         toast({ title: 'Obra atualizada!', description: 'Os dados da obra foram salvos.' });
       } else {
-        const filesToUpload = currentFiles.filter((item): item is NewFileItem => 'file' in item).map(item => item.file);
-        await addProject(data, filesToUpload);
+        await addProject(data, []);
         toast({ title: 'Obra criada!', description: 'A nova obra foi adicionada com sucesso.' });
       }
       onFinished();
@@ -93,36 +93,6 @@ export function ProjectForm({ project, onFinished }: ProjectFormProps) {
       setIsSubmitting(false);
     }
   };
-
-  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const files = event.target.files;
-    if (files) {
-      const newFiles = Array.from(files);
-      setCurrentFiles(prev => {
-        const existingNames = new Set(prev.map(item => 'file' in item ? item.file.name : item.name));
-        const filteredNewFiles = newFiles.filter(f => !existingNames.has(f.name));
-        const newFileItems: NewFileItem[] = filteredNewFiles.map(file => ({
-            id: crypto.randomUUID(),
-            file: file
-        }));
-        return [...prev, ...newFileItems];
-      });
-    }
-    if (event.target) {
-      event.target.value = ''; 
-    }
-  };
-  
-  const handleRemoveFile = (fileIdToRemove: string) => {
-    setCurrentFiles(prev => prev.filter(item => {
-        if ('file' in item) {
-            return item.id !== fileIdToRemove;
-        } else {
-            return item.path !== fileIdToRemove;
-        }
-    }));
-  };
-
 
   return (
     <Form {...form}>
@@ -251,39 +221,9 @@ export function ProjectForm({ project, onFinished }: ProjectFormProps) {
               
               <FormItem>
                 <FormLabel>Documentos da Obra</FormLabel>
-                 <div className="space-y-2 mt-2">
-                    {currentFiles.map((item) => {
-                        const isNew = 'file' in item;
-                        const name = isNew ? item.file.name : item.name;
-                        const key = isNew ? item.id : item.path; 
-                        const title = isNew ? `${name} (novo)` : name;
-
-                        return (
-                            <div key={key} className={`flex items-center justify-between rounded-md border p-2 ${isNew ? 'border-dashed' : ''}`}>
-                                <div className="flex items-center gap-2 overflow-hidden">
-                                    <FileText className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                                    <span className={`text-sm truncate ${isNew ? 'italic' : ''}`} title={title}>{name}</span>
-                                </div>
-                                <Button type="button" variant="ghost" size="icon" onClick={() => handleRemoveFile(key)}>
-                                    <Trash2 className="h-4 w-4 text-destructive" />
-                                </Button>
-                            </div>
-                        )
-                    })}
-                  </div>
-                <div>
-                  <input 
-                    type="file" 
-                    ref={fileInputRef} 
-                    onChange={handleFileChange}
-                    className="hidden"
-                    multiple
-                  />
-                  <Button type="button" variant="outline" onClick={() => fileInputRef.current?.click()} className="mt-2" disabled={isSubmitting}>
-                      <Upload className="mr-2 h-4 w-4" /> Carregar Arquivos
-                  </Button>
+                <div className="text-sm text-muted-foreground p-4 border border-dashed rounded-md text-center">
+                  A funcionalidade de upload de arquivos está temporariamente desativada.
                 </div>
-                <FormMessage />
               </FormItem>
             </div>
           </ScrollArea>
