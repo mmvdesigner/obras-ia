@@ -10,7 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import type { Project, ProjectFile } from '@/lib/types';
-import { useData } from '@/hooks/use-data';
+import { useData, NewFileItem } from '@/hooks/use-data';
 import { useToast } from '@/hooks/use-toast';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { FileText, Trash2, Upload, Loader2 } from 'lucide-react';
@@ -29,8 +29,6 @@ const projectSchema = z.object({
 
 type ProjectFormValues = z.infer<typeof projectSchema>;
 
-// Helper types for managing files in the form state
-type NewFileItem = { id: string; file: File };
 type FileListItem = ProjectFile | NewFileItem;
 
 interface ProjectFormProps {
@@ -79,12 +77,8 @@ export function ProjectForm({ project, onFinished }: ProjectFormProps) {
     setIsSubmitting(true);
     try {
       if (project) {
-        const filesToUpload = currentFiles.filter((item): item is NewFileItem => 'file' in item).map(item => item.file);
-        const existingFiles = currentFiles.filter((item): item is ProjectFile => !('file' in item));
-        
-        await updateProject(project.id, data, project.files || [], [...existingFiles, ...filesToUpload]);
+        await updateProject(project.id, data, project.files || [], currentFiles);
         toast({ title: 'Obra atualizada!', description: 'Os dados da obra foram salvos.' });
-
       } else {
         const filesToUpload = currentFiles.filter((item): item is NewFileItem => 'file' in item).map(item => item.file);
         await addProject(data, filesToUpload);
@@ -121,9 +115,9 @@ export function ProjectForm({ project, onFinished }: ProjectFormProps) {
   
   const handleRemoveFile = (fileIdToRemove: string) => {
     setCurrentFiles(prev => prev.filter(item => {
-        if ('file' in item) { // It's a NewFileItem
+        if ('file' in item) {
             return item.id !== fileIdToRemove;
-        } else { // It's a ProjectFile
+        } else {
             return item.path !== fileIdToRemove;
         }
     }));
@@ -261,7 +255,6 @@ export function ProjectForm({ project, onFinished }: ProjectFormProps) {
                     {currentFiles.map((item) => {
                         const isNew = 'file' in item;
                         const name = isNew ? item.file.name : item.name;
-                        // Use the stable unique ID for the key
                         const key = isNew ? item.id : item.path; 
                         const title = isNew ? `${name} (novo)` : name;
 

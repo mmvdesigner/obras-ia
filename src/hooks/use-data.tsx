@@ -9,11 +9,14 @@ import { initialData } from '@/lib/data';
 import type { AppData, Project, Employee, Expense, Task, InventoryItem, User, ProjectFile } from '@/lib/types';
 import { useAuth } from './use-auth';
 
+// Helper type for the form component
+export type NewFileItem = { id: string; file: File };
+
 interface DataContextType {
   data: AppData;
   loading: boolean;
   addProject: (projectData: Omit<Project, 'id' | 'files'>, filesToUpload: File[]) => Promise<void>;
-  updateProject: (projectId: string, formData: Partial<Omit<Project, 'id' | 'files'>>, originalFiles: ProjectFile[], currentFiles: (ProjectFile | File)[]) => Promise<void>;
+  updateProject: (projectId: string, formData: Partial<Omit<Project, 'id' | 'files'>>, originalFiles: ProjectFile[], currentFiles: (ProjectFile | NewFileItem)[]) => Promise<void>;
   deleteProject: (projectId: string) => Promise<void>;
   addEmployee: (employee: Omit<Employee, 'id'>) => Promise<void>;
   updateEmployee: (employee: Employee) => Promise<void>;
@@ -134,33 +137,31 @@ export function DataProvider({ children }: { children: ReactNode }) {
     projectId: string, 
     formData: Partial<Omit<Project, 'id' | 'files'>>, 
     originalFiles: ProjectFile[], 
-    currentFiles: (ProjectFile | File)[]
+    currentFiles: (ProjectFile | NewFileItem)[]
   ) => {
     try {
-      // 1. Identify files to delete by comparing original and current lists.
-      const currentFilePaths = new Set(
-        currentFiles.filter((f): f is ProjectFile => !(f instanceof File)).map(f => f.path)
+      const currentSavedFilePaths = new Set(
+        currentFiles.filter((item): item is ProjectFile => 'path' in item).map(f => f.path)
       );
-      const filesToDelete = originalFiles.filter(orig => !currentFilePaths.has(orig.path));
+      
+      const filesToDelete = originalFiles.filter(orig => !currentSavedFilePaths.has(orig.path));
 
-      // 2. Delete files from Storage.
-      for (const file of filesToDelete) {
+      for (const fileToDelete of filesToDelete) {
         try {
-            const fileRef = ref(storage, file.path);
+            const fileRef = ref(storage, fileToDelete.path);
             await deleteObject(fileRef);
         } catch (err) {
-            console.error(`Error deleting file ${file.path}:`, err);
-            // Optionally decide if this should stop the whole process
-            throw new Error(`Failed to delete file "${file.name}". Please check permissions.`);
+            console.error(`Error deleting file ${fileToDelete.path}:`, err);
+            throw new Error(`Failed to delete file "${fileToDelete.name}".`);
         }
       }
 
-      // 3. Identify and upload new files.
-      const newFilesToUpload = currentFiles.filter((f): f is File => f instanceof File);
+      const newFilesToUpload = currentFiles.filter((item): item is NewFileItem => 'file' in item);
       const uploadedFiles: ProjectFile[] = [];
 
-      for (const file of newFilesToUpload) {
+      for (const item of newFilesToUpload) {
           try {
+            const file = item.file;
             const storagePath = `projects/${projectId}/${Date.now()}-${file.name}`;
             const fileRef = ref(storage, storagePath);
             await uploadBytes(fileRef, file);
@@ -171,19 +172,16 @@ export function DataProvider({ children }: { children: ReactNode }) {
                 path: storagePath,
             });
           } catch (err) {
-            console.error(`Error uploading file ${file.name}:`, err);
-            // Re-throw a more user-friendly error to be caught by the form's submit handler
-            throw new Error(`Failed to upload file "${file.name}". Please try again.`);
+            console.error(`Error uploading file ${item.file.name}:`, err);
+            throw new Error(`Failed to upload file "${item.file.name}". Please try again.`);
           }
       }
 
-      // 4. Consolidate the final list of files for Firestore.
       const finalFiles: ProjectFile[] = [
-        ...currentFiles.filter((f): f is ProjectFile => !(f instanceof File)),
+        ...currentFiles.filter((f): f is ProjectFile => 'path' in f),
         ...uploadedFiles,
       ];
-
-      // 5. Update Firestore with new data and the final file list.
+      
       const projectDocRef = doc(db, 'projects', projectId);
       await updateDoc(projectDocRef, {
         ...formData,
@@ -192,7 +190,6 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
     } catch (error) {
       console.error("Error updating project:", error);
-      // Re-throw the error to be caught by the form's submit handler
       throw error; 
     }
   };
