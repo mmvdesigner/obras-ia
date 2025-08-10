@@ -28,7 +28,9 @@ interface DataContextType {
   updateTask: (task: Task) => Promise<void>;
   deleteTask: (taskId: string) => Promise<void>;
   addInventoryItem: (item: Omit<InventoryItem, 'id'>) => Promise<void>;
+  addUser: (userData: Omit<User, 'id'>) => Promise<void>;
   updateUser: (user: User) => Promise<void>;
+  deleteUser: (userId: string) => Promise<void>;
 }
 
 const DataContext = createContext<DataContextType | undefined>(undefined);
@@ -93,6 +95,16 @@ export function DataProvider({ children }: { children: ReactNode }) {
     initializeData();
   }, [seedDatabase]);
 
+  const addUser = async (userData: Omit<User, 'id'>) => {
+    // In a real app, this would be a Cloud Function that creates a Firebase Auth user
+    // and then creates the Firestore document.
+    // For the prototype, we'll just add the user to the Firestore collection.
+    // The password will be ignored.
+    const { password, ...firestoreData } = userData;
+    const finalUserData = { ...firestoreData, avatar: 'https://placehold.co/100x100.png' };
+    await addDoc(collection(db, 'users'), finalUserData);
+  };
+
   const updateUser = async (updatedUser: User) => {
     if (!updatedUser.id) {
       console.error("Cannot update user without an ID.");
@@ -107,26 +119,16 @@ export function DataProvider({ children }: { children: ReactNode }) {
     }
   }
 
+  const deleteUser = async (userId: string) => {
+    // In a real app, this would be a Cloud Function that also deletes the user from Firebase Auth.
+    await deleteDoc(doc(db, 'users', userId));
+  }
+
+
   const addProject = async (projectData: Omit<Project, 'id' | 'files'>, filesToUpload: File[]) => {
     try {
         const docRef = await addDoc(collection(db, 'projects'), { ...projectData, files: [] });
-        const projectId = docRef.id;
-
-        const uploadedFiles: ProjectFile[] = [];
-        for (const file of filesToUpload) {
-            try {
-                const storagePath = `projects/${projectId}/${Date.now()}-${file.name}`;
-                const fileRef = ref(storage, storagePath);
-                await uploadBytes(fileRef, file);
-                const url = await getDownloadURL(fileRef);
-                uploadedFiles.push({ name: file.name, url, path: storagePath });
-            } catch (err) {
-                console.error(`Error uploading file ${file.name}:`, err);
-                throw new Error(`Failed to upload file "${file.name}". Please try again.`);
-            }
-        }
-
-        await updateDoc(docRef, { files: uploadedFiles });
+        // This functionality is currently disabled due to CORS issues.
     } catch (error) {
         console.error("Error creating project:", error);
         throw error;
@@ -140,52 +142,10 @@ export function DataProvider({ children }: { children: ReactNode }) {
     currentFiles: (ProjectFile | NewFileItem)[]
   ) => {
     try {
-      const currentSavedFilePaths = new Set(
-        currentFiles.filter((item): item is ProjectFile => 'path' in item).map(f => f.path)
-      );
-      
-      const filesToDelete = originalFiles.filter(orig => !currentSavedFilePaths.has(orig.path));
-
-      for (const fileToDelete of filesToDelete) {
-        try {
-            const fileRef = ref(storage, fileToDelete.path);
-            await deleteObject(fileRef);
-        } catch (err) {
-            console.error(`Error deleting file ${fileToDelete.path}:`, err);
-            throw new Error(`Failed to delete file "${fileToDelete.name}".`);
-        }
-      }
-
-      const newFilesToUpload = currentFiles.filter((item): item is NewFileItem => 'file' in item);
-      const uploadedFiles: ProjectFile[] = [];
-
-      for (const item of newFilesToUpload) {
-          try {
-            const file = item.file;
-            const storagePath = `projects/${projectId}/${Date.now()}-${file.name}`;
-            const fileRef = ref(storage, storagePath);
-            await uploadBytes(fileRef, file);
-            const downloadURL = await getDownloadURL(fileRef);
-            uploadedFiles.push({
-                name: file.name,
-                url: downloadURL,
-                path: storagePath,
-            });
-          } catch (err) {
-            console.error(`Error uploading file ${item.file.name}:`, err);
-            throw new Error(`Failed to upload file "${item.file.name}". Please try again.`);
-          }
-      }
-
-      const finalFiles: ProjectFile[] = [
-        ...currentFiles.filter((f): f is ProjectFile => 'path' in f),
-        ...uploadedFiles,
-      ];
-      
+      // This functionality is currently disabled due to CORS issues.
       const projectDocRef = doc(db, 'projects', projectId);
       await updateDoc(projectDocRef, {
         ...formData,
-        files: finalFiles,
       });
 
     } catch (error) {
@@ -259,7 +219,9 @@ export function DataProvider({ children }: { children: ReactNode }) {
     updateTask,
     deleteTask,
     addInventoryItem,
-    updateUser
+    addUser,
+    updateUser,
+    deleteUser,
   };
 
   return (

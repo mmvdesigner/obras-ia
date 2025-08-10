@@ -2,7 +2,7 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAuth } from '@/hooks/use-auth';
 import { useRouter } from 'next/navigation';
-import { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -14,9 +14,22 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { useData } from '@/hooks/use-data';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import { MoreHorizontal } from 'lucide-react';
+import { MoreHorizontal, PlusCircle } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { UserForm } from './_components/user-form';
+import type { User } from '@/lib/types';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 
 const profileFormSchema = z.object({
   name: z.string().min(1, 'Nome é obrigatório'),
@@ -27,9 +40,15 @@ type ProfileFormValues = z.infer<typeof profileFormSchema>;
 
 function SettingsPageContent() {
     const { user, loading: authLoading } = useAuth();
-    const { data, loading: dataLoading, updateUser } = useData();
+    const { data, loading: dataLoading, updateUser, deleteUser } = useData();
     const router = useRouter();
     const { toast } = useToast();
+
+    // Dialog states
+    const [isFormOpen, setIsFormOpen] = useState(false);
+    const [editingUser, setEditingUser] = useState<User | null>(null);
+    const [isAlertOpen, setIsAlertOpen] = useState(false);
+    const [userToDelete, setUserToDelete] = useState<User | null>(null);
 
     // Security check: Redirect non-admins away from this page.
     useEffect(() => {
@@ -51,7 +70,7 @@ function SettingsPageContent() {
         }
     });
 
-    const onSubmit = (formData: ProfileFormValues) => {
+    const onProfileSubmit = (formData: ProfileFormValues) => {
         if (user) {
             updateUser({ ...user, ...formData });
             toast({
@@ -60,6 +79,40 @@ function SettingsPageContent() {
             });
         }
     };
+
+    const handleAddNew = () => {
+        setEditingUser(null);
+        setIsFormOpen(true);
+    }
+    
+    const handleEdit = (userToEdit: User) => {
+        setEditingUser(userToEdit);
+        setIsFormOpen(true);
+    }
+
+    const handleDeleteClick = (user: User) => {
+        setUserToDelete(user);
+        setIsAlertOpen(true);
+    }
+
+    const handleConfirmDelete = async () => {
+        if (userToDelete) {
+            if (userToDelete.id === user?.id) {
+                toast({ variant: 'destructive', title: 'Ação não permitida', description: 'Você não pode excluir seu próprio usuário.'});
+                setIsAlertOpen(false);
+                return;
+            }
+            try {
+                await deleteUser(userToDelete.id);
+                toast({ title: 'Usuário excluído!', description: 'O usuário foi removido do sistema.' });
+            } catch (error) {
+                toast({ variant: 'destructive', title: 'Erro!', description: 'Não foi possível excluir o usuário.' });
+            }
+            setIsAlertOpen(false);
+            setUserToDelete(null);
+        }
+    }
+
     
     // Show a loading/skeleton state while we verify the user's role.
     if(authLoading || dataLoading || user?.role !== 'Administrator') {
@@ -86,6 +139,7 @@ function SettingsPageContent() {
     }
 
     return (
+    <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
         <div className="space-y-6">
             <div>
                 <h1 className="text-3xl font-bold tracking-tight">Configurações</h1>
@@ -98,7 +152,7 @@ function SettingsPageContent() {
                 </CardHeader>
                 <CardContent>
                     <Form {...form}>
-                        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 max-w-lg">
+                        <form onSubmit={form.handleSubmit(onProfileSubmit)} className="space-y-4 max-w-lg">
                             <FormField
                                 control={form.control}
                                 name="name"
@@ -131,9 +185,16 @@ function SettingsPageContent() {
                 </CardContent>
             </Card>
              <Card>
-                <CardHeader>
-                    <CardTitle>Gerenciamento de Usuários</CardTitle>
-                    <CardDescription>Visualize e gerencie os usuários do sistema. (Funcionalidade em desenvolvimento)</CardDescription>
+                <CardHeader className="flex flex-row items-center justify-between">
+                    <div>
+                        <CardTitle>Gerenciamento de Usuários</CardTitle>
+                        <CardDescription>Adicione, edite ou remova usuários do sistema.</CardDescription>
+                    </div>
+                    <DialogTrigger asChild>
+                        <Button onClick={handleAddNew}>
+                            <PlusCircle className="mr-2 h-4 w-4" /> Novo Usuário
+                        </Button>
+                    </DialogTrigger>
                 </CardHeader>
                 <CardContent>
                    <Table>
@@ -170,8 +231,8 @@ function SettingsPageContent() {
                                                 </Button>
                                             </DropdownMenuTrigger>
                                             <DropdownMenuContent>
-                                                <DropdownMenuItem disabled>Editar</DropdownMenuItem>
-                                                <DropdownMenuItem disabled>Excluir</DropdownMenuItem>
+                                                <DropdownMenuItem onClick={() => handleEdit(u)}>Editar</DropdownMenuItem>
+                                                <DropdownMenuItem onClick={() => handleDeleteClick(u)} className="text-destructive">Excluir</DropdownMenuItem>
                                             </DropdownMenuContent>
                                         </DropdownMenu>
                                     </TableCell>
@@ -182,6 +243,30 @@ function SettingsPageContent() {
                 </CardContent>
             </Card>
         </div>
+        <DialogContent>
+            <DialogHeader>
+            <DialogTitle>{editingUser ? 'Editar Usuário' : 'Novo Usuário'}</DialogTitle>
+            <DialogDescription>
+                {editingUser ? 'Atualize os detalhes do usuário.' : 'Preencha as informações para criar um novo usuário.'}
+            </DialogDescription>
+            </DialogHeader>
+            <UserForm user={editingUser} onFinished={() => setIsFormOpen(false)} />
+        </DialogContent>
+        <AlertDialog open={isAlertOpen} onOpenChange={setIsAlertOpen}>
+            <AlertDialogContent>
+                <AlertDialogHeader>
+                    <AlertDialogTitle>Você tem certeza?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                       Esta ação não pode ser desfeita. Isso irá excluir permanentemente o usuário "{userToDelete?.name}" e remover seus dados dos servidores.
+                    </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                    <AlertDialogAction onClick={handleConfirmDelete} className="bg-destructive hover:bg-destructive/90">Sim, excluir</AlertDialogAction>
+                </AlertDialogFooter>
+            </AlertDialogContent>
+        </AlertDialog>
+    </Dialog>
     );
 }
 

@@ -6,6 +6,7 @@ export interface User {
   email: string;
   role: UserRole;
   avatar: string;
+  password?: string;
 }
 
 export type ProjectStatus = 'planejamento' | 'em andamento' | 'pausada' | 'concluída';
