@@ -2,14 +2,13 @@
 
 import { useState, useMemo, useRef } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import { Bot, Loader2, Printer, AlertCircle } from 'lucide-react';
+import { Bot, Loader2, AlertCircle } from 'lucide-react';
 import { useData } from '@/hooks/use-data';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { summarizeProjectExpenses, SummarizeProjectExpensesInput } from '@/ai/flows/summarize-project-expenses';
-import { useReactToPrint } from 'react-to-print';
 import { Badge } from '@/components/ui/badge';
 import { LiderLogo } from '@/components/logo';
 import type { Expense } from '@/lib/types';
@@ -362,17 +361,10 @@ function ReportsPage() {
   const { data } = useData();
   const [selectedProjectId, setSelectedProjectId] = useState<string>('');
   const [reportType, setReportType] = useState<ReportType>('general');
-  const reportRef = useRef<HTMLDivElement>(null);
   
   const project = useMemo(() => data.projects.find(p => p.id === selectedProjectId), [data, selectedProjectId]);
   const projectExpenses = useMemo(() => data.expenses.filter(e => e.projectId === selectedProjectId), [data.expenses, selectedProjectId]);
   const pendingExpenses = useMemo(() => projectExpenses.filter(e => e.status === 'a pagar'), [projectExpenses]);
-
-  const handlePrint = useReactToPrint({
-    content: () => reportRef.current,
-    documentTitle: `${reportType}-${project?.name.replace(/\s/g, '_') || 'obra'}`,
-    pageStyle: `@media print { body { -webkit-print-color-adjust: exact; } @page { size: A4; margin: 20mm; } }`,
-  });
 
   const renderReportContent = () => {
     switch (reportType) {
@@ -415,22 +407,15 @@ function ReportsPage() {
               ))}
             </SelectContent>
           </Select>
-            <Button onClick={handlePrint} disabled={!selectedProjectId}>
-                <Printer className="mr-2 h-4 w-4" />
-                Exportar para PDF
-            </Button>
         </div>
       </div>
       
       {!selectedProjectId ? (
         <Card className="flex items-center justify-center h-64"><p className="text-muted-foreground">Selecione uma obra para ver o relatório.</p></Card>
       ) : (
-        <div ref={reportRef} className="p-4 print:p-0">
-            <div className="print:hidden p-4 mb-4 border rounded-lg">
+        <div>
+            <div className="p-4 mb-4 border rounded-lg">
                 <ReportHeader project={project} reportTitle={reportTypes[reportType]} />
-            </div>
-            <div className="hidden print:block mb-8">
-                 <ReportHeader project={project} reportTitle={reportTypes[reportType]} />
             </div>
             {renderReportContent()}
         </div>
