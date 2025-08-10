@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useRef } from 'react';
+import { useState, useMemo, useRef, Component } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { Bot, Loader2, Printer, AlertCircle } from 'lucide-react';
 import { useData } from '@/hooks/use-data';
@@ -358,11 +358,19 @@ const reportTypes = {
 
 type ReportType = keyof typeof reportTypes;
 
+// Wrapper component for the print button
+class PrintTrigger extends Component {
+    render() {
+        return this.props.children;
+    }
+}
+
 function ReportsPage() {
   const { data } = useData();
   const [selectedProjectId, setSelectedProjectId] = useState<string>('');
   const [reportType, setReportType] = useState<ReportType>('general');
   const reportRef = useRef<HTMLDivElement>(null);
+  const printTriggerRef = useRef<PrintTrigger>(null);
   
   const project = useMemo(() => data.projects.find(p => p.id === selectedProjectId), [data, selectedProjectId]);
   const projectExpenses = useMemo(() => data.expenses.filter(e => e.projectId === selectedProjectId), [data.expenses, selectedProjectId]);
@@ -371,7 +379,8 @@ function ReportsPage() {
   const handlePrint = useReactToPrint({
     content: () => reportRef.current,
     documentTitle: `${reportType}-${project?.name.replace(/\s/g, '_') || 'obra'}`,
-    pageStyle: `@media print { body { -webkit-print-color-adjust: exact; } @page { size: A4; margin: 20mm; } }`
+    pageStyle: `@media print { body { -webkit-print-color-adjust: exact; } @page { size: A4; margin: 20mm; } }`,
+    trigger: () => printTriggerRef.current,
   });
 
   const renderReportContent = () => {
@@ -415,10 +424,12 @@ function ReportsPage() {
               ))}
             </SelectContent>
           </Select>
-          <Button onClick={handlePrint} disabled={!selectedProjectId}>
-            <Printer className="mr-2 h-4 w-4" />
-            Exportar para PDF
-          </Button>
+            <PrintTrigger ref={printTriggerRef}>
+              <Button onClick={handlePrint} disabled={!selectedProjectId}>
+                <Printer className="mr-2 h-4 w-4" />
+                Exportar para PDF
+              </Button>
+            </PrintTrigger>
         </div>
       </div>
       
