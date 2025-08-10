@@ -35,7 +35,7 @@ function DashboardSkeleton() {
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const { user, loading: authLoading } = useAuth();
-  const { loading: dataLoading } = useData();
+  const { data, loading: dataLoading } = useData();
   const router = useRouter();
 
   const isLoading = authLoading || dataLoading;
@@ -43,8 +43,17 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   useEffect(() => {
     if (!isLoading && !user) {
       router.push('/login');
+      return;
     }
-  }, [user, isLoading, router]);
+
+    // ACL Logic: Redirect non-admins from the main dashboard
+    if (!isLoading && user && user.role !== 'Administrator' && window.location.pathname === '/dashboard') {
+        const firstProject = data.projects[0];
+        if (firstProject) {
+            router.push(`/dashboard/projects/${firstProject.id}`);
+        }
+    }
+  }, [user, isLoading, data.projects, router]);
 
   if (isLoading) {
     return <DashboardSkeleton />;

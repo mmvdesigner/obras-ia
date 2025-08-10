@@ -2,7 +2,7 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAuth } from '@/hooks/use-auth';
 import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -16,6 +16,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { MoreHorizontal } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { Skeleton } from '@/components/ui/skeleton';
 
 const profileFormSchema = z.object({
   name: z.string().min(1, 'Nome é obrigatório'),
@@ -30,6 +31,7 @@ function SettingsPageContent() {
     const router = useRouter();
     const { toast } = useToast();
 
+    // Security check: Redirect non-admins away from this page.
     useEffect(() => {
         if (!authLoading && user?.role !== 'Administrator') {
             toast({
@@ -59,8 +61,28 @@ function SettingsPageContent() {
         }
     };
     
-    if(authLoading || dataLoading || !user || user?.role !== 'Administrator') {
-        return <div className="flex h-full w-full items-center justify-center">Carregando...</div>
+    // Show a loading/skeleton state while we verify the user's role.
+    if(authLoading || dataLoading || user?.role !== 'Administrator') {
+        return (
+            <div className="space-y-6">
+                <Skeleton className="h-10 w-1/4" />
+                <Skeleton className="h-6 w-1/2" />
+                <Card>
+                    <CardHeader><Skeleton className="h-8 w-1/3" /></CardHeader>
+                    <CardContent className="space-y-4">
+                        <Skeleton className="h-10 w-full" />
+                        <Skeleton className="h-10 w-full" />
+                        <Skeleton className="h-10 w-24" />
+                    </CardContent>
+                </Card>
+                <Card>
+                    <CardHeader><Skeleton className="h-8 w-1/3" /></CardHeader>
+                    <CardContent>
+                        <Skeleton className="h-40 w-full" />
+                    </CardContent>
+                </Card>
+            </div>
+        )
     }
 
     return (

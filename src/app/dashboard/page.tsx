@@ -2,10 +2,23 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useData } from '@/hooks/use-data';
 import { Activity, Users, DollarSign, Building2 } from 'lucide-react';
-import { useMemo } from 'react';
+import { useMemo, useEffect } from 'react';
+import { useAuth } from '@/hooks/use-auth';
+import { useRouter } from 'next/navigation';
+import { Skeleton } from '@/components/ui/skeleton';
+
 
 function DashboardPageContent() {
   const { data } = useData();
+  const { user, loading: authLoading } = useAuth();
+  const router = useRouter();
+
+  // Security check: only admins should see this page
+  useEffect(() => {
+    if (!authLoading && user?.role !== 'Administrator') {
+        router.push('/dashboard/projects'); // Redirect to a safe page
+    }
+  }, [user, authLoading, router]);
 
   const activeProjects = useMemo(() => data.projects.filter(p => p.status === 'em andamento').length, [data.projects]);
   const activeEmployees = useMemo(() => data.employees.filter(e => e.status === 'ativo').length, [data.employees]);
@@ -28,6 +41,24 @@ function DashboardPageContent() {
       currency: 'BRL',
     }).format(value);
   };
+
+  if (authLoading || user?.role !== 'Administrator') {
+    return (
+        <div className="space-y-6">
+            <Skeleton className="h-8 w-1/3" />
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                <Skeleton className="h-32 w-full" />
+                <Skeleton className="h-32 w-full" />
+                <Skeleton className="h-32 w-full" />
+                <Skeleton className="h-32 w-full" />
+            </div>
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
+                <Skeleton className="col-span-4 h-80" />
+                <Skeleton className="col-span-3 h-80" />
+            </div>
+        </div>
+    )
+  }
   
   return (
     <div className="space-y-6">
