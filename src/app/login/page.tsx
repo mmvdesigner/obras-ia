@@ -116,8 +116,9 @@ export default function LoginPage() {
             </form>
           </Form>
         </CardContent>
-        <CardFooter className="p-8 text-center text-sm text-muted-foreground">
+        <CardFooter className="flex flex-col gap-4 p-8 text-center text-sm text-muted-foreground">
             <p>Problemas para acessar? Entre em contato com o suporte.</p>
+            <p className="text-xs">© {new Date().getFullYear()} Messias Vasconcelos. Todos os direitos reservados.</p>
         </CardFooter>
       </Card>
     </div>
