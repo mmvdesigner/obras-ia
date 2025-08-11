@@ -69,7 +69,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           <SidebarHeader className="p-4">
             <Link href="/dashboard" className="flex items-center gap-2">
                 <LiderLogo className="w-8 h-8 text-primary" />
-                <span className="text-xl font-semibold text-primary">LIDER</span>
+                <span className="text-xl font-semibold text-primary">LIDER Empreendimentos</span>
             </Link>
           </SidebarHeader>
           <SidebarContent>

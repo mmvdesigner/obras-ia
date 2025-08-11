@@ -23,7 +23,7 @@ function ReportHeader({ project, reportTitle }: { project: any, reportTitle: str
             </div>
              <div className="flex items-center gap-2">
                 <LiderLogo className="w-8 h-8 text-primary" />
-                <span className="text-xl font-semibold text-primary">LIDER</span>
+                <span className="text-xl font-semibold text-primary">LIDER Empreendimentos</span>
             </div>
         </div>
     )
@@ -365,6 +365,7 @@ function ReportsPage() {
   const project = useMemo(() => data.projects.find(p => p.id === selectedProjectId), [data, selectedProjectId]);
   const projectExpenses = useMemo(() => data.expenses.filter(e => e.projectId === selectedProjectId), [data.expenses, selectedProjectId]);
   const pendingExpenses = useMemo(() => projectExpenses.filter(e => e.status === 'a pagar'), [projectExpenses]);
+  const reportRef = useRef(null);
 
   const renderReportContent = () => {
     switch (reportType) {
@@ -383,7 +384,7 @@ function ReportsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 print:hidden">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Relatórios da Obra</h1>
           <p className="text-muted-foreground">Analise o desempenho de suas obras.</p>
@@ -411,9 +412,9 @@ function ReportsPage() {
       </div>
       
       {!selectedProjectId ? (
-        <Card className="flex items-center justify-center h-64"><p className="text-muted-foreground">Selecione uma obra para ver o relatório.</p></Card>
+        <Card className="flex items-center justify-center h-64 print:hidden"><p className="text-muted-foreground">Selecione uma obra para ver o relatório.</p></Card>
       ) : (
-        <div>
+        <div ref={reportRef}>
             <div className="p-4 mb-4 border rounded-lg">
                 <ReportHeader project={project} reportTitle={reportTypes[reportType]} />
             </div>

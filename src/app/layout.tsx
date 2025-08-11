@@ -8,7 +8,7 @@ import { DataProvider } from "@/hooks/use-data";
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 
 export const metadata: Metadata = {
-  title: "BuildWise",
+  title: "LIDER Empreendimentos",
   description: "Responsive web application for personal management of civil construction works.",
   icons: {
     icon: [],

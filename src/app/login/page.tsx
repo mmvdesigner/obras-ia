@@ -71,7 +71,7 @@ export default function LoginPage() {
           <div className="mx-auto mb-4 flex h-24 w-24 items-center justify-center rounded-full bg-primary/10">
             <LiderLogo className="h-12 w-12 text-primary" />
           </div>
-          <CardTitle className="text-4xl font-bold tracking-tighter text-primary">LIDER</CardTitle>
+          <CardTitle className="text-4xl font-bold tracking-tighter text-primary">LIDER Empreendimentos</CardTitle>
           <CardDescription className="text-lg text-muted-foreground pt-1">
             Acesse o sistema com suas credenciais.
           </CardDescription>
