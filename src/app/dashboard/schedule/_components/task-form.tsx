@@ -11,6 +11,7 @@ import { useData } from '@/hooks/use-data';
 import type { Task } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { useAuth } from '@/hooks/use-auth';
 
 const taskSchema = z.object({
   name: z.string().min(1, 'Nome é obrigatório'),
@@ -32,6 +33,7 @@ interface TaskFormProps {
 
 export function TaskForm({ task, onFinished, projectId }: TaskFormProps) {
   const { data, addTask, updateTask } = useData();
+  const { user } = useAuth();
   const { toast } = useToast();
 
   const defaultValues: Partial<TaskFormValues> = task
@@ -44,6 +46,7 @@ export function TaskForm({ task, onFinished, projectId }: TaskFormProps) {
         status: 'nao iniciada',
         priority: 'media',
         projectId,
+        responsible: user?.name || '',
       };
 
   const form = useForm<TaskFormValues>({
@@ -121,24 +124,17 @@ export function TaskForm({ task, onFinished, projectId }: TaskFormProps) {
             />
             </div>
             <FormField
-            control={form.control}
-            name="responsible"
-            render={({ field }) => (
-                <FormItem>
-                <FormLabel>Responsável</FormLabel>
-                <Select onValueChange={field.onChange} defaultValue={field.value}>
-                    <FormControl>
-                    <SelectTrigger>
-                        <SelectValue placeholder="Selecione um funcionário" />
-                    </SelectTrigger>
+              control={form.control}
+              name="responsible"
+              render={({ field }) => (
+                  <FormItem>
+                  <FormLabel>Responsável</FormLabel>
+                   <FormControl>
+                        <Input disabled {...field} />
                     </FormControl>
-                    <SelectContent>
-                    {data.employees.filter(e => e.status === 'ativo' && e.linkedProjectIds.includes(projectId)).map(e => <SelectItem key={e.id} value={e.name}>{e.name}</SelectItem>)}
-                    </SelectContent>
-                </Select>
-                <FormMessage />
-                </FormItem>
-            )}
+                  <FormMessage />
+                  </FormItem>
+              )}
             />
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <FormField

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import { PlusCircle, MoreHorizontal, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { PlusCircle, MoreHorizontal, AlertCircle, CheckCircle2, ChevronLeft, ChevronRight, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -9,10 +9,12 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { useData } from '@/hooks/use-data';
-import type { Expense, ExpenseStatus } from '@/lib/types';
+import type { Expense, ExpenseCategory, ExpenseStatus } from '@/lib/types';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { ExpenseForm } from './_components/expense-form';
 import { Separator } from '@/components/ui/separator';
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 interface FinancePageContentProps {
   projectId: string;
@@ -28,8 +30,15 @@ const statusLabel: Record<ExpenseStatus, string> = {
     'a pagar': 'A Pagar',
 }
 
+const categoryLabels: Record<ExpenseCategory, string> = {
+  material: 'Material de Construção',
+  'mao de obra': 'Mão de Obra',
+  equipamentos: 'Equipamentos/Ferramentas',
+  servicos: 'Serviços Terceirizados',
+  outros: 'Outros',
+};
 
-function ExpenseTable({ title, description, icon: Icon, expenses, onEdit, onDelete, onMarkAsPaid }: {
+function ExpenseTable({ title, description, icon: Icon, expenses, onEdit, onDelete, onMarkAsPaid, showPagination = true }: {
   title: string;
   description: string;
   icon: React.ElementType;
@@ -37,7 +46,14 @@ function ExpenseTable({ title, description, icon: Icon, expenses, onEdit, onDele
   onEdit: (expense: Expense) => void;
   onDelete: (id: string) => void;
   onMarkAsPaid?: (expense: Expense) => void;
+  showPagination?: boolean;
 }) {
+    const [currentPage, setCurrentPage] = useState(1);
+    const itemsPerPage = 5;
+
+    const totalPages = Math.ceil(expenses.length / itemsPerPage);
+    const paginatedExpenses = expenses.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+
     const formatCurrency = (value: number) => {
         return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
     };
@@ -68,12 +84,12 @@ function ExpenseTable({ title, description, icon: Icon, expenses, onEdit, onDele
                         </TableRow>
                     </TableHeader>
                     <TableBody>
-                        {expenses.length === 0 && (
+                        {paginatedExpenses.length === 0 && (
                             <TableRow>
                                 <TableCell colSpan={6} className="text-center text-muted-foreground">Nenhum registro encontrado.</TableCell>
                             </TableRow>
                         )}
-                        {expenses.map((expense) => (
+                        {paginatedExpenses.map((expense) => (
                             <TableRow key={expense.id}>
                                 <TableCell className="font-medium">{expense.description}</TableCell>
                                 <TableCell>{expense.supplier}</TableCell>
@@ -105,8 +121,23 @@ function ExpenseTable({ title, description, icon: Icon, expenses, onEdit, onDele
                     </TableBody>
                 </Table>
             </CardContent>
-            <CardFooter className="justify-end font-bold">
-               Total: {formatCurrency(expenses.reduce((sum, e) => sum + e.amount, 0))}
+            <CardFooter className="flex items-center justify-between">
+               <div className="font-bold">
+                 Total: {formatCurrency(expenses.reduce((sum, e) => sum + e.amount, 0))}
+               </div>
+               {showPagination && totalPages > 1 && (
+                 <div className="flex items-center gap-2">
+                    <Button variant="outline" size="icon" onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1}>
+                        <ChevronLeft className="h-4 w-4"/>
+                    </Button>
+                    <span className="text-sm text-muted-foreground">
+                        Página {currentPage} de {totalPages}
+                    </span>
+                    <Button variant="outline" size="icon" onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages}>
+                        <ChevronRight className="h-4 w-4"/>
+                    </Button>
+                 </div>
+               )}
             </CardFooter>
         </Card>
     )
@@ -116,6 +147,8 @@ export default function FinancePageContent({ projectId }: FinancePageContentProp
   const { data, deleteExpense, updateExpense } = useData();
   const [open, setOpen] = useState(false);
   const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [categoryFilter, setCategoryFilter] = useState('all');
 
   const project = useMemo(() => data.projects.find(p => p.id === projectId), [data.projects, projectId]);
   
@@ -123,8 +156,28 @@ export default function FinancePageContent({ projectId }: FinancePageContentProp
     return data.expenses.filter(e => e.projectId === projectId);
   }, [data.expenses, projectId]);
 
-  const pendingExpenses = useMemo(() => projectExpenses.filter(e => e.status === 'a pagar'), [projectExpenses]);
-  const paidExpenses = useMemo(() => projectExpenses.filter(e => e.status === 'pago'), [projectExpenses]);
+  const filteredExpenses = useMemo(() => {
+    return projectExpenses
+      .filter(expense => {
+        // Category filter
+        if (categoryFilter !== 'all' && expense.category !== categoryFilter) {
+            return false;
+        }
+        // Search term filter
+        if (searchTerm) {
+            const lowerCaseSearch = searchTerm.toLowerCase();
+            return (
+                expense.description.toLowerCase().includes(lowerCaseSearch) ||
+                expense.supplier.toLowerCase().includes(lowerCaseSearch)
+            );
+        }
+        return true;
+      })
+  }, [projectExpenses, searchTerm, categoryFilter]);
+
+
+  const pendingExpenses = useMemo(() => filteredExpenses.filter(e => e.status === 'a pagar'), [filteredExpenses]);
+  const paidExpenses = useMemo(() => filteredExpenses.filter(e => e.status === 'pago'), [filteredExpenses]);
   
   const handleEdit = (expense: Expense) => {
     setEditingExpense(expense);
@@ -144,8 +197,8 @@ export default function FinancePageContent({ projectId }: FinancePageContentProp
     return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
   };
   
-  const totalPaid = useMemo(() => paidExpenses.reduce((sum, e) => sum + e.amount, 0), [paidExpenses]);
-  const totalPending = useMemo(() => pendingExpenses.reduce((sum, e) => sum + e.amount, 0), [pendingExpenses]);
+  const totalPaid = useMemo(() => projectExpenses.filter(e => e.status === 'pago').reduce((sum, e) => sum + e.amount, 0), [projectExpenses]);
+  const totalPending = useMemo(() => projectExpenses.filter(e => e.status === 'a pagar').reduce((sum, e) => sum + e.amount, 0), [projectExpenses]);
   const budgetProgress = project ? (totalPaid / project.totalBudget) * 100 : 0;
 
   if (!project) {
@@ -194,6 +247,30 @@ export default function FinancePageContent({ projectId }: FinancePageContentProp
         </Card>
 
         <Separator />
+
+        <div className="flex flex-col md:flex-row gap-4">
+            <div className="relative flex-1">
+                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input
+                    type="search"
+                    placeholder="Pesquisar por descrição ou fornecedor..."
+                    className="pl-8"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                />
+            </div>
+            <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+                <SelectTrigger className="w-full md:w-[280px]">
+                    <SelectValue placeholder="Filtrar por categoria" />
+                </SelectTrigger>
+                <SelectContent>
+                    <SelectItem value="all">Todas as Categorias</SelectItem>
+                    {Object.entries(categoryLabels).map(([value, label]) => (
+                        <SelectItem key={value} value={value}>{label}</SelectItem>
+                    ))}
+                </SelectContent>
+            </Select>
+        </div>
         
         <div className="space-y-6">
             <ExpenseTable 

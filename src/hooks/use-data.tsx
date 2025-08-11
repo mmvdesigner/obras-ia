@@ -3,7 +3,7 @@
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useCallback } from 'react';
 import { db, storage } from '@/lib/firebase';
-import { collection, onSnapshot, addDoc, updateDoc, deleteDoc, doc, writeBatch, getDocs, query, setDoc, getDoc } from 'firebase/firestore';
+import { collection, onSnapshot, addDoc, updateDoc, deleteDoc, doc, writeBatch, getDocs, query, setDoc, getDoc, runTransaction } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
 import { initialData } from '@/lib/data';
 import type { AppData, Project, Employee, Expense, Task, InventoryItem, User, ProjectFile } from '@/lib/types';
@@ -172,9 +172,41 @@ export function DataProvider({ children }: { children: ReactNode }) {
     await deleteDoc(doc(db, 'employees', employeeId));
   };
   
-  const addExpense = async (expense: Omit<Expense, 'id'>) => {
-      const docRef = await addDoc(collection(db, 'expenses'), expense);
-      return docRef;
+  const addExpense = async (expenseData: Omit<Expense, 'id'>) => {
+    const batch = writeBatch(db);
+    const expenseRef = doc(collection(db, 'expenses'));
+    batch.set(expenseRef, expenseData);
+
+    if (expenseData.category === 'material' && expenseData.materialName && expenseData.quantity && expenseData.unitPrice && expenseData.unit) {
+        const inventoryQuery = query(collection(db, 'inventory'), 
+            doc('projectId', '==', expenseData.projectId), 
+            doc('name', '==', expenseData.materialName)
+        );
+        const inventorySnapshot = await getDocs(inventoryQuery);
+        
+        if (inventorySnapshot.empty) {
+            const newInventoryItemRef = doc(collection(db, 'inventory'));
+            batch.set(newInventoryItemRef, {
+                projectId: expenseData.projectId,
+                name: expenseData.materialName,
+                quantity: expenseData.quantity,
+                unit: expenseData.unit,
+                averagePrice: expenseData.unitPrice,
+            });
+        } else {
+            const itemDoc = inventorySnapshot.docs[0];
+            const itemData = itemDoc.data() as InventoryItem;
+            const newQuantity = itemData.quantity + expenseData.quantity;
+            const newAveragePrice = ((itemData.averagePrice * itemData.quantity) + (expenseData.unitPrice * expenseData.quantity)) / newQuantity;
+            
+            batch.update(itemDoc.ref, {
+                quantity: newQuantity,
+                averagePrice: newAveragePrice,
+            });
+        }
+    }
+    await batch.commit();
+    return expenseRef;
   };
   
   const updateExpense = async (updatedExpense: Expense) => {
@@ -183,7 +215,29 @@ export function DataProvider({ children }: { children: ReactNode }) {
   };
   
   const deleteExpense = async (expenseId: string) => {
-    await deleteDoc(doc(db, 'expenses', expenseId));
+    await runTransaction(db, async (transaction) => {
+      const expenseRef = doc(db, "expenses", expenseId);
+      const expenseDoc = await transaction.get(expenseRef);
+      if (!expenseDoc.exists()) {
+        throw "Expense does not exist!";
+      }
+
+      const expenseData = expenseDoc.data() as Expense;
+      if (expenseData.category === 'material' && expenseData.materialName && expenseData.quantity) {
+        const inventoryQuery = query(
+          collection(db, 'inventory'), 
+          doc('projectId', '==', expenseData.projectId),
+          doc('name', '==', expenseData.materialName)
+        );
+        const inventorySnapshot = await getDocs(inventoryQuery);
+        if (!inventorySnapshot.empty) {
+            const itemDoc = inventorySnapshot.docs[0];
+            const currentQuantity = itemDoc.data().quantity || 0;
+            transaction.update(itemDoc.ref, { quantity: currentQuantity - expenseData.quantity });
+        }
+      }
+      transaction.delete(expenseRef);
+    });
   };
 
   const addTask = async (task: Omit<Task, 'id'>) => {

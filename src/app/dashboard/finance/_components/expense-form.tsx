@@ -11,8 +11,9 @@ import { useData } from '@/hooks/use-data';
 import type { Expense, ExpenseCategory, ExpenseStatus } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { Textarea } from '@/components/ui/textarea';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Loader2 } from 'lucide-react';
 
 const expenseSchema = z.object({
   description: z.string().min(1, 'Descrição é obrigatória'),
@@ -35,7 +36,7 @@ const expenseSchema = z.object({
     return true;
 }, {
     message: "Para a categoria 'Material', o nome, quantidade, unidade e preço unitário são obrigatórios.",
-    path: ['materialName'], // You can choose which field to show the error on
+    path: ['materialName'],
 });
 
 
@@ -63,6 +64,7 @@ const statusLabels: Record<ExpenseStatus, string> = {
 export function ExpenseForm({ expense, onFinished, projectId }: ExpenseFormProps) {
   const { data, addExpense, updateExpense } = useData();
   const { toast } = useToast();
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const defaultValues: Partial<ExpenseFormValues> = expense
     ? { ...expense, date: expense.date.split('T')[0] }
@@ -89,15 +91,23 @@ export function ExpenseForm({ expense, onFinished, projectId }: ExpenseFormProps
     }
   }, [watchedQuantity, watchedUnitPrice, watchedCategory, form])
 
-  const onSubmit = (formData: ExpenseFormValues) => {
-    if (expense) {
-      updateExpense({ ...expense, ...formData });
-      toast({ title: 'Gasto atualizado!', description: 'O gasto foi salvo com sucesso.' });
-    } else {
-      addExpense(formData);
-      toast({ title: 'Gasto registrado!', description: 'O novo gasto foi adicionado.' });
+  const onSubmit = async (formData: ExpenseFormValues) => {
+    setIsSubmitting(true);
+    try {
+        if (expense) {
+            await updateExpense({ ...expense, ...formData });
+            toast({ title: 'Gasto atualizado!', description: 'O gasto foi salvo com sucesso.' });
+        } else {
+            await addExpense(formData);
+            toast({ title: 'Gasto registrado!', description: 'O novo gasto foi adicionado.' });
+        }
+        onFinished();
+    } catch(error) {
+        console.error("Failed to save expense:", error);
+        toast({ variant: "destructive", title: "Erro!", description: "Não foi possível salvar o gasto." });
+    } finally {
+        setIsSubmitting(false);
     }
-    onFinished();
   };
 
   return (
@@ -298,8 +308,11 @@ export function ExpenseForm({ expense, onFinished, projectId }: ExpenseFormProps
             </div>
         </ScrollArea>
         <div className="flex justify-end gap-2 pt-4">
-            <Button type="button" variant="ghost" onClick={onFinished}>Cancelar</Button>
-            <Button type="submit">{expense ? 'Salvar Alterações' : 'Registrar Gasto'}</Button>
+            <Button type="button" variant="ghost" onClick={onFinished} disabled={isSubmitting}>Cancelar</Button>
+            <Button type="submit" disabled={isSubmitting}>
+                {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                {expense ? 'Salvar Alterações' : 'Registrar Gasto'}
+            </Button>
         </div>
       </form>
     </Form>
