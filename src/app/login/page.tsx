@@ -71,7 +71,7 @@ export default function LoginPage() {
           <div className="mx-auto mb-4 flex h-24 w-24 items-center justify-center rounded-full bg-primary/10">
             <LiderLogo className="h-12 w-12 text-primary" />
           </div>
-          <CardTitle className="text-4xl font-bold tracking-tighter text-primary">LIDER Empreendimentos</CardTitle>
+          <CardTitle className="text-4xl font-bold tracking-tighter text-primary">Lider Empreendimentos</CardTitle>
           <CardDescription className="text-lg text-muted-foreground pt-1">
             Acesse o sistema com suas credenciais.
           </CardDescription>
@@ -117,7 +117,7 @@ export default function LoginPage() {
           </Form>
         </CardContent>
         <CardFooter className="flex flex-col gap-4 p-8 text-center text-sm text-muted-foreground">
-            <p>Problemas para acessar? Entre em contato com o suporte.</p>
+            <p>Problemas para acessar? Entre em contato com o suporte. (88) 99938-2994</p>
             <p className="text-xs">© {new Date().getFullYear()} Messias Vasconcelos. Todos os direitos reservados.</p>
         </CardFooter>
       </Card>
