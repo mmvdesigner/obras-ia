@@ -73,6 +73,14 @@ export function ExpenseForm({ expense, onFinished, projectId }: ExpenseFormProps
         category: 'material',
         status: 'pago',
         projectId,
+        description: '',
+        amount: 0,
+        supplier: '',
+        receipt: '',
+        materialName: '',
+        quantity: 0,
+        unitPrice: 0,
+        unit: '',
       };
 
   const form = useForm<ExpenseFormValues>({
