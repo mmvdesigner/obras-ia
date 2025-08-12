@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useMemo } from 'react';
-import { PlusCircle, MoreHorizontal, AlertCircle, CheckCircle2, ChevronLeft, ChevronRight, Search } from 'lucide-react';
+import { useState, useMemo, useCallback } from 'react';
+import { PlusCircle, MoreHorizontal, AlertCircle, CheckCircle2, ChevronLeft, ChevronRight, Search, ArrowUpDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -38,7 +38,20 @@ const categoryLabels: Record<ExpenseCategory, string> = {
   outros: 'Outros',
 };
 
-function ExpenseTable({ title, description, icon: Icon, expenses, onEdit, onDelete, onMarkAsPaid, showPagination = true }: {
+type SortKey = keyof Expense | 'none';
+
+function ExpenseTable({ 
+    title, 
+    description, 
+    icon: Icon, 
+    expenses, 
+    onEdit, 
+    onDelete, 
+    onMarkAsPaid, 
+    showPagination = true,
+    sortDescriptor,
+    onSortChange,
+}: {
   title: string;
   description: string;
   icon: React.ElementType;
@@ -47,6 +60,8 @@ function ExpenseTable({ title, description, icon: Icon, expenses, onEdit, onDele
   onDelete: (id: string) => void;
   onMarkAsPaid?: (expense: Expense) => void;
   showPagination?: boolean;
+  sortDescriptor: { key: SortKey; direction: 'asc' | 'desc' };
+  onSortChange: (key: SortKey) => void;
 }) {
     const [currentPage, setCurrentPage] = useState(1);
     const itemsPerPage = 5;
@@ -56,6 +71,11 @@ function ExpenseTable({ title, description, icon: Icon, expenses, onEdit, onDele
 
     const formatCurrency = (value: number) => {
         return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
+    };
+
+    const renderSortIndicator = (key: SortKey) => {
+        if (sortDescriptor.key !== key) return null;
+        return sortDescriptor.direction === 'asc' ? ' ▲' : ' ▼';
     };
 
     return (
@@ -73,11 +93,27 @@ function ExpenseTable({ title, description, icon: Icon, expenses, onEdit, onDele
                 <Table>
                     <TableHeader>
                         <TableRow>
-                            <TableHead>Descrição</TableHead>
-                            <TableHead>Fornecedor</TableHead>
-                            <TableHead>Data</TableHead>
+                            <TableHead>
+                                <Button variant="ghost" onClick={() => onSortChange('description')}>
+                                    Descrição {renderSortIndicator('description')}
+                                </Button>
+                            </TableHead>
+                            <TableHead>
+                                <Button variant="ghost" onClick={() => onSortChange('supplier')}>
+                                    Fornecedor {renderSortIndicator('supplier')}
+                                </Button>
+                            </TableHead>
+                            <TableHead>
+                                <Button variant="ghost" onClick={() => onSortChange('date')}>
+                                    Data {renderSortIndicator('date')}
+                                 </Button>
+                            </TableHead>
                             <TableHead>Status</TableHead>
-                            <TableHead className="text-right">Valor</TableHead>
+                            <TableHead className="text-right">
+                                <Button variant="ghost" onClick={() => onSortChange('amount')}>
+                                    Valor {renderSortIndicator('amount')}
+                                </Button>
+                            </TableHead>
                             <TableHead>
                                 <span className="sr-only">Ações</span>
                             </TableHead>
@@ -149,6 +185,7 @@ export default function FinancePageContent({ projectId }: FinancePageContentProp
   const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('all');
+  const [sortDescriptor, setSortDescriptor] = useState<{ key: SortKey; direction: 'asc' | 'desc' }>({ key: 'date', direction: 'desc' });
 
   const project = useMemo(() => data.projects.find(p => p.id === projectId), [data.projects, projectId]);
   
@@ -176,8 +213,35 @@ export default function FinancePageContent({ projectId }: FinancePageContentProp
   }, [projectExpenses, searchTerm, categoryFilter]);
 
 
-  const pendingExpenses = useMemo(() => filteredExpenses.filter(e => e.status === 'a pagar'), [filteredExpenses]);
-  const paidExpenses = useMemo(() => filteredExpenses.filter(e => e.status === 'pago'), [filteredExpenses]);
+  const sortedExpenses = useMemo(() => {
+    const sorted = [...filteredExpenses];
+    if (sortDescriptor.key !== 'none') {
+        sorted.sort((a, b) => {
+            const aValue = a[sortDescriptor.key as keyof Expense];
+            const bValue = b[sortDescriptor.key as keyof Expense];
+
+            if (aValue === undefined || bValue === undefined) return 0;
+            
+            if (aValue < bValue) return sortDescriptor.direction === 'asc' ? -1 : 1;
+            if (aValue > bValue) return sortDescriptor.direction === 'asc' ? 1 : -1;
+            return 0;
+        });
+    }
+    return sorted;
+  }, [filteredExpenses, sortDescriptor]);
+
+
+  const handleSortChange = (key: SortKey) => {
+    if (sortDescriptor.key === key) {
+        setSortDescriptor({ key, direction: sortDescriptor.direction === 'asc' ? 'desc' : 'asc'});
+    } else {
+        setSortDescriptor({ key, direction: 'asc' });
+    }
+  };
+
+
+  const pendingExpenses = useMemo(() => sortedExpenses.filter(e => e.status === 'a pagar'), [sortedExpenses]);
+  const paidExpenses = useMemo(() => sortedExpenses.filter(e => e.status === 'pago'), [sortedExpenses]);
   
   const handleEdit = (expense: Expense) => {
     setEditingExpense(expense);
@@ -281,6 +345,8 @@ export default function FinancePageContent({ projectId }: FinancePageContentProp
                 onEdit={handleEdit}
                 onDelete={deleteExpense}
                 onMarkAsPaid={handleMarkAsPaid}
+                sortDescriptor={sortDescriptor}
+                onSortChange={handleSortChange}
             />
              <ExpenseTable 
                 title="Histórico de Pagamentos"
@@ -289,6 +355,8 @@ export default function FinancePageContent({ projectId }: FinancePageContentProp
                 expenses={paidExpenses}
                 onEdit={handleEdit}
                 onDelete={deleteExpense}
+                sortDescriptor={sortDescriptor}
+                onSortChange={handleSortChange}
             />
         </div>
 

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo, useRef } from 'react';
+import React, { useState, useMemo, useRef, useCallback } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { Bot, Loader2, AlertCircle } from 'lucide-react';
 import { useData } from '@/hooks/use-data';
@@ -24,7 +24,7 @@ function ReportHeader({ project, reportTitle }: { project: Project | undefined, 
             </div>
              <div className="flex items-center gap-2">
                 <LiderLogo className="w-8 h-8 text-primary" />
-                <span className="text-xl font-semibold text-primary">Lider Empreendimentos</span>
+                <span className="text-xl font-semibold text-primary">LIDER Empreendimentos</span>
             </div>
         </div>
     )
@@ -33,6 +33,45 @@ function ReportHeader({ project, reportTitle }: { project: Project | undefined, 
 // Reusable formatters
 const formatCurrency = (value: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
 const formatDate = (dateString: string) => new Date(dateString).toLocaleDateString('pt-BR', { timeZone: 'UTC' });
+
+type SortKey = keyof Expense | 'none';
+
+const useExpenseSorter = (initialExpenses: Expense[]) => {
+    const [sortDescriptor, setSortDescriptor] = useState<{ key: SortKey; direction: 'asc' | 'desc' }>({ key: 'date', direction: 'desc' });
+
+    const sortedExpenses = useMemo(() => {
+        const sorted = [...initialExpenses];
+        if (sortDescriptor.key !== 'none') {
+            sorted.sort((a, b) => {
+                const aValue = a[sortDescriptor.key as keyof Expense];
+                const bValue = b[sortDescriptor.key as keyof Expense];
+
+                if (aValue === undefined || bValue === undefined) return 0;
+                
+                if (aValue < bValue) return sortDescriptor.direction === 'asc' ? -1 : 1;
+                if (aValue > bValue) return sortDescriptor.direction === 'asc' ? 1 : -1;
+                return 0;
+            });
+        }
+        return sorted;
+    }, [initialExpenses, sortDescriptor]);
+
+    const onSortChange = useCallback((key: SortKey) => {
+        setSortDescriptor(current => {
+            if (current.key === key) {
+                return { key, direction: current.direction === 'asc' ? 'desc' : 'asc' };
+            }
+            return { key, direction: 'asc' };
+        });
+    }, []);
+    
+    const renderSortIndicator = useCallback((key: SortKey) => {
+        if (sortDescriptor.key !== key) return null;
+        return sortDescriptor.direction === 'asc' ? ' ▲' : ' ▼';
+    }, [sortDescriptor]);
+
+    return { sortedExpenses, sortDescriptor, onSortChange, renderSortIndicator };
+};
 
 
 // General Report Component
@@ -203,6 +242,7 @@ function GeneralReport({ projectId }: { projectId: string }) {
 
 // Pending Expenses Report
 function PendingExpensesReport({ expenses }: { expenses: Expense[] }) {
+    const { sortedExpenses, onSortChange, renderSortIndicator } = useExpenseSorter(expenses);
     const totalPending = expenses.reduce((sum, e) => sum + e.amount, 0);
 
     return (
@@ -215,17 +255,17 @@ function PendingExpensesReport({ expenses }: { expenses: Expense[] }) {
                 <Table>
                     <TableHeader>
                         <TableRow>
-                            <TableHead>Descrição</TableHead>
-                            <TableHead>Fornecedor</TableHead>
-                            <TableHead>Data</TableHead>
-                            <TableHead className="text-right">Valor</TableHead>
+                            <TableHead><Button variant="ghost" onClick={() => onSortChange('description')}>Descrição{renderSortIndicator('description')}</Button></TableHead>
+                            <TableHead><Button variant="ghost" onClick={() => onSortChange('supplier')}>Fornecedor{renderSortIndicator('supplier')}</Button></TableHead>
+                            <TableHead><Button variant="ghost" onClick={() => onSortChange('date')}>Data{renderSortIndicator('date')}</Button></TableHead>
+                            <TableHead className="text-right"><Button variant="ghost" onClick={() => onSortChange('amount')}>Valor{renderSortIndicator('amount')}</Button></TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
-                        {expenses.length === 0 ? (
+                        {sortedExpenses.length === 0 ? (
                             <TableRow><TableCell colSpan={4} className="text-center text-muted-foreground">Nenhuma conta a pagar.</TableCell></TableRow>
                         ) : (
-                            expenses.map(expense => (
+                            sortedExpenses.map(expense => (
                                 <TableRow key={expense.id}>
                                     <TableCell>{expense.description}</TableCell>
                                     <TableCell>{expense.supplier}</TableCell>
@@ -246,8 +286,10 @@ function PendingExpensesReport({ expenses }: { expenses: Expense[] }) {
 
 // Expenses by Category Report
 function CategoryReport({ expenses }: { expenses: Expense[] }) {
+    const { sortedExpenses, onSortChange, renderSortIndicator } = useExpenseSorter(expenses);
+
     const expensesByCategory = useMemo(() => {
-        return expenses.reduce((acc, expense) => {
+        return sortedExpenses.reduce((acc, expense) => {
             const category = expense.category;
             if (!acc[category]) {
                 acc[category] = { total: 0, items: [] };
@@ -256,7 +298,7 @@ function CategoryReport({ expenses }: { expenses: Expense[] }) {
             acc[category].items.push(expense);
             return acc;
         }, {} as Record<string, { total: number; items: Expense[] }>);
-    }, [expenses]);
+    }, [sortedExpenses]);
 
     return (
         <div className="space-y-6">
@@ -269,10 +311,10 @@ function CategoryReport({ expenses }: { expenses: Expense[] }) {
                         <Table>
                              <TableHeader>
                                 <TableRow>
-                                    <TableHead>Descrição</TableHead>
-                                    <TableHead>Fornecedor</TableHead>
-                                    <TableHead>Data</TableHead>
-                                    <TableHead className="text-right">Valor</TableHead>
+                                    <TableHead><Button variant="ghost" onClick={() => onSortChange('description')}>Descrição{renderSortIndicator('description')}</Button></TableHead>
+                                    <TableHead><Button variant="ghost" onClick={() => onSortChange('supplier')}>Fornecedor{renderSortIndicator('supplier')}</Button></TableHead>
+                                    <TableHead><Button variant="ghost" onClick={() => onSortChange('date')}>Data{renderSortIndicator('date')}</Button></TableHead>
+                                    <TableHead className="text-right"><Button variant="ghost" onClick={() => onSortChange('amount')}>Valor{renderSortIndicator('amount')}</Button></TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
@@ -298,8 +340,9 @@ function CategoryReport({ expenses }: { expenses: Expense[] }) {
 
 // Expenses by Supplier Report
 function SupplierReport({ expenses }: { expenses: Expense[] }) {
+     const { sortedExpenses, onSortChange, renderSortIndicator } = useExpenseSorter(expenses);
      const expensesBySupplier = useMemo(() => {
-        return expenses.reduce((acc, expense) => {
+        return sortedExpenses.reduce((acc, expense) => {
             const supplier = expense.supplier;
             if (!acc[supplier]) {
                 acc[supplier] = { total: 0, items: [] };
@@ -308,7 +351,7 @@ function SupplierReport({ expenses }: { expenses: Expense[] }) {
             acc[supplier].items.push(expense);
             return acc;
         }, {} as Record<string, { total: number; items: Expense[] }>);
-    }, [expenses]);
+    }, [sortedExpenses]);
 
     return (
         <div className="space-y-6">
@@ -321,10 +364,10 @@ function SupplierReport({ expenses }: { expenses: Expense[] }) {
                         <Table>
                              <TableHeader>
                                 <TableRow>
-                                    <TableHead>Descrição</TableHead>
-                                    <TableHead>Categoria</TableHead>
-                                    <TableHead>Data</TableHead>
-                                    <TableHead className="text-right">Valor</TableHead>
+                                    <TableHead><Button variant="ghost" onClick={() => onSortChange('description')}>Descrição{renderSortIndicator('description')}</Button></TableHead>
+                                    <TableHead><Button variant="ghost" onClick={() => onSortChange('category')}>Categoria{renderSortIndicator('category')}</Button></TableHead>
+                                    <TableHead><Button variant="ghost" onClick={() => onSortChange('date')}>Data{renderSortIndicator('date')}</Button></TableHead>
+                                    <TableHead className="text-right"><Button variant="ghost" onClick={() => onSortChange('amount')}>Valor{renderSortIndicator('amount')}</Button></TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
@@ -369,6 +412,10 @@ function ReportsPage() {
   const reportRef = useRef(null);
 
   const renderReportContent = () => {
+    if (!selectedProjectId) {
+      return <Card className="flex items-center justify-center h-64 print:hidden"><p className="text-muted-foreground">Selecione uma obra para ver o relatório.</p></Card>;
+    }
+    
     switch (reportType) {
       case 'general':
         return <GeneralReport projectId={selectedProjectId} />;
@@ -412,16 +459,14 @@ function ReportsPage() {
         </div>
       </div>
       
-      {!selectedProjectId ? (
-        <Card className="flex items-center justify-center h-64 print:hidden"><p className="text-muted-foreground">Selecione uma obra para ver o relatório.</p></Card>
-      ) : (
-        <div ref={reportRef}>
+      <div ref={reportRef}>
+        {selectedProjectId && (
             <div className="p-4 mb-4 border rounded-lg">
                 <ReportHeader project={project} reportTitle={reportTypes[reportType]} />
             </div>
-            {renderReportContent()}
-        </div>
-      )}
+        )}
+        {renderReportContent()}
+      </div>
     </div>
   );
 }
