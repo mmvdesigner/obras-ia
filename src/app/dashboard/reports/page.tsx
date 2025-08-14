@@ -211,6 +211,9 @@ function GeneralReport({ projectId }: { projectId: string }) {
                             </div>
                         ))}
                     </CardContent>
+                    <CardFooter className="justify-end font-bold text-lg pt-4">
+                        Total: {formatCurrency(totalSpent)}
+                    </CardFooter>
                 </Card>
             </div>
             
