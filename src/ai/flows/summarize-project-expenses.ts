@@ -14,6 +14,7 @@ import {z} from 'genkit';
 const SummarizeProjectExpensesInputSchema = z.object({
   projectParameters: z.string().describe('The parameters of the project, including budget, timeline, and goals.'),
   expenseReports: z.string().describe('The expense reports for the project, including category, description, and amount.'),
+  supplierCosts: z.string().describe('A summary of total costs per supplier.'),
 });
 export type SummarizeProjectExpensesInput = z.infer<typeof SummarizeProjectExpensesInputSchema>;
 
@@ -32,14 +33,15 @@ const prompt = ai.definePrompt({
   output: {schema: SummarizeProjectExpensesOutputSchema},
   prompt: `Você é um gestor de projetos especialista em redução de custos para construção civil.
 
-Analise os parâmetros do projeto e os relatórios de despesas para identificar áreas onde os custos podem ser reduzidos.
+Analise os parâmetros do projeto, os relatórios de despesas e os custos por fornecedor para identificar áreas onde os custos podem ser reduzidos.
 
 Sua resposta deve ser em **PORTUGUÊS**.
 
 Forneça um resumo dos gastos e sugira áreas específicas para economia, sempre se baseando nos parâmetros do projeto. Seja claro e objetivo.
 
 Parâmetros do Projeto: {{{projectParameters}}}
-Relatórios de Despesas: {{{expenseReports}}}`,
+Relatórios de Despesas: {{{expenseReports}}}
+Custos por Fornecedor: {{{supplierCosts}}}`,
 });
 
 const summarizeProjectExpensesFlow = ai.defineFlow(

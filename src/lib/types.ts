@@ -40,7 +40,7 @@ export interface Employee {
   status: 'ativo' | 'inativo';
 }
 
-export type ExpenseCategory = 'material' | 'mao de obra' | 'equipamentos' | 'servicos' | 'outros';
+export type ExpenseCategory = 'material' | 'mao de obra' | 'equipamentos' | 'servicos' | 'documentacao' | 'outros';
 export type ExpenseStatus = 'pago' | 'a pagar';
 
 export interface Expense {

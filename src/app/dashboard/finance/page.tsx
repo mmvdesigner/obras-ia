@@ -35,6 +35,7 @@ const categoryLabels: Record<ExpenseCategory, string> = {
   'mao de obra': 'Mão de Obra',
   equipamentos: 'Equipamentos/Ferramentas',
   servicos: 'Serviços Terceirizados',
+  documentacao: 'Documentação',
   outros: 'Outros',
 };
 

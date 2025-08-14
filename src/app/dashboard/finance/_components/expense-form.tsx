@@ -19,7 +19,7 @@ const expenseSchema = z.object({
   description: z.string().min(1, 'Descrição é obrigatória'),
   amount: z.coerce.number().min(0.01, 'Valor deve ser positivo'),
   date: z.string().min(1, 'Data é obrigatória'),
-  category: z.enum(['material', 'mao de obra', 'equipamentos', 'servicos', 'outros']),
+  category: z.enum(['material', 'mao de obra', 'equipamentos', 'servicos', 'documentacao', 'outros']),
   projectId: z.string().min(1, 'Obra é obrigatória'),
   supplier: z.string().min(1, 'Fornecedor é obrigatório'),
   status: z.enum(['pago', 'a pagar']),
@@ -53,6 +53,7 @@ const categoryLabels: Record<ExpenseCategory, string> = {
   'mao de obra': 'Mão de Obra',
   equipamentos: 'Equipamentos/Ferramentas',
   servicos: 'Serviços Terceirizados',
+  documentacao: 'Documentação',
   outros: 'Outros',
 };
 

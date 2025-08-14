@@ -2,7 +2,7 @@
 
 import React, { useState, useMemo, useRef, useCallback } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import { Bot, Loader2, AlertCircle } from 'lucide-react';
+import { Bot, Loader2, AlertCircle, Users } from 'lucide-react';
 import { useData } from '@/hooks/use-data';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -12,6 +12,7 @@ import { summarizeProjectExpenses, SummarizeProjectExpensesInput } from '@/ai/fl
 import { Badge } from '@/components/ui/badge';
 import { LiderLogo } from '@/components/logo';
 import type { Expense, Project } from '@/lib/types';
+import { Progress } from '@/components/ui/progress';
 
 
 function ReportHeader({ project, reportTitle }: { project: Project | undefined, reportTitle: string }) {
@@ -82,8 +83,17 @@ function GeneralReport({ projectId }: { projectId: string }) {
     
     const project = useMemo(() => data.projects.find(p => p.id === projectId), [data, projectId]);
     const expenses = useMemo(() => data.expenses.filter(e => e.projectId === projectId), [data, projectId]);
-    const tasks = useMemo(() => data.tasks.filter(t => t.projectId === projectId), [data, projectId]);
-    const pendingExpenses = useMemo(() => expenses.filter(e => e.status === 'a pagar'), [expenses]);
+    
+    const expensesBySupplier = useMemo(() => {
+        return expenses.reduce((acc, expense) => {
+            const supplier = expense.supplier;
+            if (!acc[supplier]) {
+                acc[supplier] = 0;
+            }
+            acc[supplier] += expense.amount;
+            return acc;
+        }, {} as Record<string, number>);
+    }, [expenses]);
 
     const handleGenerateSummary = async () => {
         if (!project) return;
@@ -100,13 +110,18 @@ function GeneralReport({ projectId }: { projectId: string }) {
         `;
 
         const expenseReports = expenses.map(e => 
-            `Categoria: ${e.category}, Descrição: ${e.description}, Valor: ${e.amount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}, Status: ${e.status}`
+            `Categoria: ${e.category}, Descrição: ${e.description}, Valor: ${e.amount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}, Status: ${e.status}, Fornecedor: ${e.supplier}`
+        ).join('\n');
+
+        const supplierCosts = Object.entries(expensesBySupplier).map(([supplier, total]) => 
+            `${supplier}: ${total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}`
         ).join('\n');
         
         try {
             const input: SummarizeProjectExpensesInput = {
                 projectParameters,
-                expenseReports
+                expenseReports,
+                supplierCosts
             };
             const result = await summarizeProjectExpenses(input);
             setSummary(result.summary);
@@ -133,8 +148,7 @@ function GeneralReport({ projectId }: { projectId: string }) {
 
     const totalSpent = useMemo(() => expenses.reduce((sum, e) => sum + e.amount, 0), [expenses]);
     const totalPaid = useMemo(() => expenses.filter(e => e.status === 'pago').reduce((sum, e) => sum + e.amount, 0), [expenses]);
-    const totalPending = useMemo(() => pendingExpenses.reduce((sum, e) => sum + e.amount, 0), [pendingExpenses]);
-    const tasksCompleted = useMemo(() => tasks.filter(t => t.status === 'concluída').length, [tasks]);
+    const totalPending = useMemo(() => expenses.filter(e => e.status === 'a pagar').reduce((sum, e) => sum + e.amount, 0), [expenses]);
 
     if (!project) return null;
 
@@ -181,15 +195,21 @@ function GeneralReport({ projectId }: { projectId: string }) {
                     </CardContent>
                 </Card>
                 <Card className="print:shadow-none print:border">
-                    <CardHeader><CardTitle>Resumo do Cronograma</CardTitle></CardHeader>
-                    <CardContent>
-                        <Table>
-                            <TableBody>
-                                <TableRow><TableCell>Total de Tarefas</TableCell><TableCell className="text-right font-bold">{tasks.length}</TableCell></TableRow>
-                                <TableRow><TableCell>Tarefas Concluídas</TableCell><TableCell className="text-right font-bold">{tasksCompleted}</TableCell></TableRow>
-                                <TableRow><TableCell>Progresso</TableCell><TableCell className="text-right font-bold">{tasks.length > 0 ? `${((tasksCompleted / tasks.length) * 100).toFixed(0)}%` : 'N/A'}</TableCell></TableRow>
-                            </TableBody>
-                        </Table>
+                    <CardHeader>
+                        <CardTitle className="flex items-center gap-2"><Users /> Gastos por Fornecedor</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-2">
+                        {Object.entries(expensesBySupplier)
+                            .sort(([, a], [, b]) => b - a)
+                            .map(([supplier, total]) => (
+                            <div key={supplier} className="space-y-1">
+                                <div className="flex justify-between items-center text-sm">
+                                    <span className="font-medium">{supplier}</span>
+                                    <span className="font-mono">{formatCurrency(total)}</span>
+                                </div>
+                                <Progress value={(total / totalSpent) * 100} className="h-2" />
+                            </div>
+                        ))}
                     </CardContent>
                 </Card>
             </div>
