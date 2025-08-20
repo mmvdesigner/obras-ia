@@ -46,6 +46,7 @@ export type ExpenseStatus = 'pago' | 'a pagar';
 export interface Expense {
   id: string;
   date: string;
+  paymentDate?: string;
   description: string;
   amount: number;
   category: ExpenseCategory;

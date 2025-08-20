@@ -24,6 +24,7 @@ const expenseSchema = z.object({
   supplier: z.string().min(1, 'Fornecedor é obrigatório'),
   status: z.enum(['pago', 'a pagar']),
   receipt: z.string().optional(),
+  paymentDate: z.string().optional(),
   // Inventory fields - optional in the object, but required by form logic if category is material
   materialName: z.string().optional(),
   quantity: z.coerce.number().optional(),
@@ -68,9 +69,14 @@ export function ExpenseForm({ expense, onFinished, projectId }: ExpenseFormProps
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const defaultValues: Partial<ExpenseFormValues> = expense
-    ? { ...expense, date: expense.date.split('T')[0] }
+    ? { 
+        ...expense,
+        date: expense.date.split('T')[0],
+        paymentDate: expense.paymentDate ? expense.paymentDate.split('T')[0] : undefined,
+      }
     : {
         date: new Date().toISOString().split('T')[0],
+        paymentDate: new Date().toISOString().split('T')[0],
         category: 'material',
         status: 'pago',
         projectId,
@@ -92,6 +98,7 @@ export function ExpenseForm({ expense, onFinished, projectId }: ExpenseFormProps
   const watchedCategory = useWatch({ control: form.control, name: 'category' });
   const watchedQuantity = useWatch({ control: form.control, name: 'quantity' });
   const watchedUnitPrice = useWatch({ control: form.control, name: 'unitPrice' });
+  const watchedStatus = useWatch({ control: form.control, name: 'status' });
 
   useEffect(() => {
     if(watchedCategory === 'material' && watchedQuantity && watchedUnitPrice) {
@@ -100,14 +107,28 @@ export function ExpenseForm({ expense, onFinished, projectId }: ExpenseFormProps
     }
   }, [watchedQuantity, watchedUnitPrice, watchedCategory, form])
 
+  useEffect(() => {
+    // If status is 'pago' and there's no paymentDate, set it to today
+    if (watchedStatus === 'pago' && !form.getValues('paymentDate')) {
+        form.setValue('paymentDate', new Date().toISOString().split('T')[0]);
+    }
+  }, [watchedStatus, form]);
+
   const onSubmit = async (formData: ExpenseFormValues) => {
     setIsSubmitting(true);
+    
+    // Ensure paymentDate is null if status is 'a pagar'
+    const finalData = {
+        ...formData,
+        paymentDate: formData.status === 'pago' ? formData.paymentDate : undefined,
+    }
+
     try {
         if (expense) {
-            await updateExpense({ ...expense, ...formData });
+            await updateExpense({ ...expense, ...finalData });
             toast({ title: 'Gasto atualizado!', description: 'O gasto foi salvo com sucesso.' });
         } else {
-            await addExpense(formData);
+            await addExpense(finalData);
             toast({ title: 'Gasto registrado!', description: 'O novo gasto foi adicionado.' });
         }
         onFinished();
@@ -299,6 +320,22 @@ export function ExpenseForm({ expense, onFinished, projectId }: ExpenseFormProps
                 )}
                 />
                 
+                {watchedStatus === 'pago' && (
+                    <FormField
+                        control={form.control}
+                        name="paymentDate"
+                        render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>Data do Pagamento</FormLabel>
+                            <FormControl>
+                            <Input type="date" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                        </FormItem>
+                        )}
+                    />
+                )}
+
                 <div className="md:col-span-2">
                     <FormField
                     control={form.control}

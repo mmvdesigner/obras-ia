@@ -41,26 +41,18 @@ const categoryLabels: Record<ExpenseCategory, string> = {
 
 type SortKey = keyof Expense | 'none';
 
-function ExpenseTable({ 
-    title, 
-    description, 
-    icon: Icon, 
+function PendingExpenseTable({ 
     expenses, 
     onEdit, 
     onDelete, 
     onMarkAsPaid, 
-    showPagination = true,
     sortDescriptor,
     onSortChange,
 }: {
-  title: string;
-  description: string;
-  icon: React.ElementType;
   expenses: Expense[];
   onEdit: (expense: Expense) => void;
   onDelete: (id: string) => void;
   onMarkAsPaid?: (expense: Expense) => void;
-  showPagination?: boolean;
   sortDescriptor: { key: SortKey; direction: 'asc' | 'desc' };
   onSortChange: (key: SortKey) => void;
 }) {
@@ -70,10 +62,7 @@ function ExpenseTable({
     const totalPages = Math.ceil(expenses.length / itemsPerPage);
     const paginatedExpenses = expenses.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
-    const formatCurrency = (value: number) => {
-        return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
-    };
-
+    const formatCurrency = (value: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
     const renderSortIndicator = (key: SortKey) => {
         if (sortDescriptor.key !== key) return null;
         return sortDescriptor.direction === 'asc' ? ' ▲' : ' ▼';
@@ -83,10 +72,10 @@ function ExpenseTable({
         <Card>
             <CardHeader>
                 <div className="flex items-start gap-4">
-                    <Icon className="h-6 w-6 text-muted-foreground" />
+                    <AlertCircle className="h-6 w-6 text-muted-foreground" />
                     <div>
-                        <CardTitle>{title}</CardTitle>
-                        <CardDescription>{description}</CardDescription>
+                        <CardTitle>Contas a Pagar</CardTitle>
+                        <CardDescription>Despesas registradas que ainda não foram pagas.</CardDescription>
                     </div>
                 </div>
             </CardHeader>
@@ -94,60 +83,26 @@ function ExpenseTable({
                 <Table>
                     <TableHeader>
                         <TableRow>
-                            <TableHead>
-                                <Button variant="ghost" onClick={() => onSortChange('description')}>
-                                    Descrição {renderSortIndicator('description')}
-                                </Button>
-                            </TableHead>
-                            <TableHead>
-                                <Button variant="ghost" onClick={() => onSortChange('supplier')}>
-                                    Fornecedor {renderSortIndicator('supplier')}
-                                </Button>
-                            </TableHead>
-                            <TableHead>
-                                <Button variant="ghost" onClick={() => onSortChange('date')}>
-                                    Data {renderSortIndicator('date')}
-                                 </Button>
-                            </TableHead>
-                            <TableHead>Status</TableHead>
-                            <TableHead className="text-right">
-                                <Button variant="ghost" onClick={() => onSortChange('amount')}>
-                                    Valor {renderSortIndicator('amount')}
-                                </Button>
-                            </TableHead>
-                            <TableHead>
-                                <span className="sr-only">Ações</span>
-                            </TableHead>
+                            <TableHead><Button variant="ghost" onClick={() => onSortChange('description')}>Descrição {renderSortIndicator('description')}</Button></TableHead>
+                            <TableHead><Button variant="ghost" onClick={() => onSortChange('supplier')}>Fornecedor {renderSortIndicator('supplier')}</Button></TableHead>
+                            <TableHead><Button variant="ghost" onClick={() => onSortChange('date')}>Data Despesa {renderSortIndicator('date')}</Button></TableHead>
+                            <TableHead className="text-right"><Button variant="ghost" onClick={() => onSortChange('amount')}>Valor {renderSortIndicator('amount')}</Button></TableHead>
+                            <TableHead><span className="sr-only">Ações</span></TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
-                        {paginatedExpenses.length === 0 && (
-                            <TableRow>
-                                <TableCell colSpan={6} className="text-center text-muted-foreground">Nenhum registro encontrado.</TableCell>
-                            </TableRow>
-                        )}
                         {paginatedExpenses.map((expense) => (
                             <TableRow key={expense.id}>
                                 <TableCell className="font-medium">{expense.description}</TableCell>
                                 <TableCell>{expense.supplier}</TableCell>
                                 <TableCell>{new Date(expense.date).toLocaleDateString('pt-BR', { timeZone: 'UTC' })}</TableCell>
-                                <TableCell>
-                                    <Badge variant={statusVariant[expense.status]}>{statusLabel[expense.status]}</Badge>
-                                </TableCell>
                                 <TableCell className="text-right">{formatCurrency(expense.amount)}</TableCell>
                                 <TableCell>
                                     <DropdownMenu>
-                                        <DropdownMenuTrigger asChild>
-                                            <Button aria-haspopup="true" size="icon" variant="ghost">
-                                                <MoreHorizontal className="h-4 w-4" />
-                                                <span className="sr-only">Toggle menu</span>
-                                            </Button>
-                                        </DropdownMenuTrigger>
+                                        <DropdownMenuTrigger asChild><Button aria-haspopup="true" size="icon" variant="ghost"><MoreHorizontal className="h-4 w-4" /><span className="sr-only">Toggle menu</span></Button></DropdownMenuTrigger>
                                         <DropdownMenuContent align="end">
                                             <DropdownMenuLabel>Ações</DropdownMenuLabel>
-                                            {onMarkAsPaid && expense.status === 'a pagar' && (
-                                                <DropdownMenuItem onClick={() => onMarkAsPaid(expense)}>Marcar como Pago</DropdownMenuItem>
-                                            )}
+                                            {onMarkAsPaid && <DropdownMenuItem onClick={() => onMarkAsPaid(expense)}>Marcar como Pago</DropdownMenuItem>}
                                             <DropdownMenuItem onClick={() => onEdit(expense)}>Editar</DropdownMenuItem>
                                             <DropdownMenuItem onClick={() => onDelete(expense.id)}>Excluir</DropdownMenuItem>
                                         </DropdownMenuContent>
@@ -159,20 +114,95 @@ function ExpenseTable({
                 </Table>
             </CardContent>
             <CardFooter className="flex items-center justify-between">
-               <div className="font-bold">
-                 Total: {formatCurrency(expenses.reduce((sum, e) => sum + e.amount, 0))}
-               </div>
-               {showPagination && totalPages > 1 && (
+               <div className="font-bold">Total: {formatCurrency(expenses.reduce((sum, e) => sum + e.amount, 0))}</div>
+               {totalPages > 1 && (
                  <div className="flex items-center gap-2">
-                    <Button variant="outline" size="icon" onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1}>
-                        <ChevronLeft className="h-4 w-4"/>
-                    </Button>
-                    <span className="text-sm text-muted-foreground">
-                        Página {currentPage} de {totalPages}
-                    </span>
-                    <Button variant="outline" size="icon" onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages}>
-                        <ChevronRight className="h-4 w-4"/>
-                    </Button>
+                    <Button variant="outline" size="icon" onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1}><ChevronLeft className="h-4 w-4"/></Button>
+                    <span className="text-sm text-muted-foreground">Página {currentPage} de {totalPages}</span>
+                    <Button variant="outline" size="icon" onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages}><ChevronRight className="h-4 w-4"/></Button>
+                 </div>
+               )}
+            </CardFooter>
+        </Card>
+    )
+}
+
+function PaidExpenseTable({ 
+    expenses, 
+    onEdit, 
+    onDelete, 
+    sortDescriptor,
+    onSortChange,
+}: {
+  expenses: Expense[];
+  onEdit: (expense: Expense) => void;
+  onDelete: (id: string) => void;
+  sortDescriptor: { key: SortKey; direction: 'asc' | 'desc' };
+  onSortChange: (key: SortKey) => void;
+}) {
+    const [currentPage, setCurrentPage] = useState(1);
+    const itemsPerPage = 5;
+
+    const totalPages = Math.ceil(expenses.length / itemsPerPage);
+    const paginatedExpenses = expenses.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+
+    const formatCurrency = (value: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
+    const renderSortIndicator = (key: SortKey) => {
+        if (sortDescriptor.key !== key) return null;
+        return sortDescriptor.direction === 'asc' ? ' ▲' : ' ▼';
+    };
+
+    return (
+        <Card>
+            <CardHeader>
+                <div className="flex items-start gap-4">
+                    <CheckCircle2 className="h-6 w-6 text-muted-foreground" />
+                    <div>
+                        <CardTitle>Histórico de Pagamentos</CardTitle>
+                        <CardDescription>Todas as despesas que já foram pagas.</CardDescription>
+                    </div>
+                </div>
+            </CardHeader>
+            <CardContent>
+                <Table>
+                    <TableHeader>
+                        <TableRow>
+                            <TableHead><Button variant="ghost" onClick={() => onSortChange('description')}>Descrição {renderSortIndicator('description')}</Button></TableHead>
+                            <TableHead><Button variant="ghost" onClick={() => onSortChange('supplier')}>Fornecedor {renderSortIndicator('supplier')}</Button></TableHead>
+                            <TableHead><Button variant="ghost" onClick={() => onSortChange('paymentDate')}>Data Pag. {renderSortIndicator('paymentDate')}</Button></TableHead>
+                            <TableHead className="text-right"><Button variant="ghost" onClick={() => onSortChange('amount')}>Valor {renderSortIndicator('amount')}</Button></TableHead>
+                            <TableHead><span className="sr-only">Ações</span></TableHead>
+                        </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                        {paginatedExpenses.map((expense) => (
+                            <TableRow key={expense.id}>
+                                <TableCell className="font-medium">{expense.description}</TableCell>
+                                <TableCell>{expense.supplier}</TableCell>
+                                <TableCell>{expense.paymentDate ? new Date(expense.paymentDate).toLocaleDateString('pt-BR', { timeZone: 'UTC' }) : '-'}</TableCell>
+                                <TableCell className="text-right">{formatCurrency(expense.amount)}</TableCell>
+                                <TableCell>
+                                    <DropdownMenu>
+                                        <DropdownMenuTrigger asChild><Button aria-haspopup="true" size="icon" variant="ghost"><MoreHorizontal className="h-4 w-4" /><span className="sr-only">Toggle menu</span></Button></DropdownMenuTrigger>
+                                        <DropdownMenuContent align="end">
+                                            <DropdownMenuLabel>Ações</DropdownMenuLabel>
+                                            <DropdownMenuItem onClick={() => onEdit(expense)}>Editar</DropdownMenuItem>
+                                            <DropdownMenuItem onClick={() => onDelete(expense.id)}>Excluir</DropdownMenuItem>
+                                        </DropdownMenuContent>
+                                    </DropdownMenu>
+                                </TableCell>
+                            </TableRow>
+                        ))}
+                    </TableBody>
+                </Table>
+            </CardContent>
+            <CardFooter className="flex items-center justify-between">
+               <div className="font-bold">Total: {formatCurrency(expenses.reduce((sum, e) => sum + e.amount, 0))}</div>
+               {totalPages > 1 && (
+                 <div className="flex items-center gap-2">
+                    <Button variant="outline" size="icon" onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1}><ChevronLeft className="h-4 w-4"/></Button>
+                    <span className="text-sm text-muted-foreground">Página {currentPage} de {totalPages}</span>
+                    <Button variant="outline" size="icon" onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages}><ChevronRight className="h-4 w-4"/></Button>
                  </div>
                )}
             </CardFooter>
@@ -255,7 +285,11 @@ export default function FinancePageContent({ projectId }: FinancePageContentProp
   }
 
   const handleMarkAsPaid = (expense: Expense) => {
-    updateExpense({ ...expense, status: 'pago' });
+    updateExpense({ 
+        ...expense, 
+        status: 'pago', 
+        paymentDate: new Date().toISOString().split('T')[0] 
+    });
   }
 
   const formatCurrency = (value: number) => {
@@ -338,10 +372,7 @@ export default function FinancePageContent({ projectId }: FinancePageContentProp
         </div>
         
         <div className="space-y-6">
-            <ExpenseTable 
-                title="Contas a Pagar"
-                description="Despesas registradas que ainda não foram pagas."
-                icon={AlertCircle}
+            <PendingExpenseTable 
                 expenses={pendingExpenses}
                 onEdit={handleEdit}
                 onDelete={deleteExpense}
@@ -349,10 +380,7 @@ export default function FinancePageContent({ projectId }: FinancePageContentProp
                 sortDescriptor={sortDescriptor}
                 onSortChange={handleSortChange}
             />
-             <ExpenseTable 
-                title="Histórico de Pagamentos"
-                description="Todas as despesas que já foram pagas."
-                icon={CheckCircle2}
+             <PaidExpenseTable 
                 expenses={paidExpenses}
                 onEdit={handleEdit}
                 onDelete={deleteExpense}
