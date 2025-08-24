@@ -117,19 +117,26 @@ export function ExpenseForm({ expense, onFinished, projectId }: ExpenseFormProps
   const onSubmit = async (formData: ExpenseFormValues) => {
     setIsSubmitting(true);
     
-    const finalData = {
-        ...formData,
-        paymentDate: formData.status === 'pago' 
-            ? (formData.paymentDate || new Date().toISOString().split('T')[0]) 
-            : undefined,
+    const dataToSave: any = { ...formData };
+
+    if (dataToSave.status === 'pago') {
+        dataToSave.paymentDate = dataToSave.paymentDate || new Date().toISOString().split('T')[0];
+    } else {
+        delete dataToSave.paymentDate; // Remove the key entirely for 'a pagar' status
     }
+
 
     try {
         if (expense) {
-            await updateExpense({ ...expense, ...finalData });
+            // For updates, ensure the original object is clean before merging
+            const cleanExpense = { ...expense, ...dataToSave};
+            if (cleanExpense.status === 'a pagar' && 'paymentDate' in cleanExpense) {
+              delete cleanExpense.paymentDate;
+            }
+            await updateExpense(cleanExpense);
             toast({ title: 'Gasto atualizado!', description: 'O gasto foi salvo com sucesso.' });
         } else {
-            await addExpense(finalData as Omit<Expense, 'id'>);
+            await addExpense(dataToSave as Omit<Expense, 'id'>);
             toast({ title: 'Gasto registrado!', description: 'O novo gasto foi adicionado.' });
         }
         onFinished();
