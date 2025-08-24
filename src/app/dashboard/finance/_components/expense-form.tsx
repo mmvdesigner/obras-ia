@@ -117,10 +117,11 @@ export function ExpenseForm({ expense, onFinished, projectId }: ExpenseFormProps
   const onSubmit = async (formData: ExpenseFormValues) => {
     setIsSubmitting(true);
     
-    // Ensure paymentDate is null if status is 'a pagar'
     const finalData = {
         ...formData,
-        paymentDate: formData.status === 'pago' ? (formData.paymentDate || new Date().toISOString().split('T')[0]) : undefined,
+        paymentDate: formData.status === 'pago' 
+            ? (formData.paymentDate || new Date().toISOString().split('T')[0]) 
+            : undefined,
     }
 
     try {
@@ -128,7 +129,7 @@ export function ExpenseForm({ expense, onFinished, projectId }: ExpenseFormProps
             await updateExpense({ ...expense, ...finalData });
             toast({ title: 'Gasto atualizado!', description: 'O gasto foi salvo com sucesso.' });
         } else {
-            await addExpense(finalData);
+            await addExpense(finalData as Omit<Expense, 'id'>);
             toast({ title: 'Gasto registrado!', description: 'O novo gasto foi adicionado.' });
         }
         onFinished();
