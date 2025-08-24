@@ -3,7 +3,7 @@
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useCallback } from 'react';
 import { db, storage } from '@/lib/firebase';
-import { collection, onSnapshot, addDoc, updateDoc, deleteDoc, doc, writeBatch, getDocs, query, where, setDoc, getDoc, runTransaction } from 'firebase/firestore';
+import { collection, onSnapshot, addDoc, updateDoc, deleteDoc, doc, writeBatch, getDocs, query, where, setDoc, getDoc, runTransaction, DocumentReference } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
 import { initialData } from '@/lib/data';
 import type { AppData, Project, Employee, Expense, Task, InventoryItem, User, ProjectFile } from '@/lib/types';
@@ -164,18 +164,39 @@ export function DataProvider({ children }: { children: ReactNode }) {
   };
   
   const addExpense = async (expenseData: Omit<Expense, 'id'>) => {
+    // If expense is for material, find the inventory item before starting the transaction
+    let inventoryDocRef: DocumentReference | null = null;
+    let inventoryData: InventoryItem | null = null;
+    
+    if (expenseData.category === 'material' && expenseData.materialName && expenseData.quantity && expenseData.unitPrice && expenseData.unit) {
+        const inventoryQuery = query(collection(db, 'inventory'), 
+            where('projectId', '==', expenseData.projectId), 
+            where('name', '==', expenseData.materialName)
+        );
+        const inventorySnapshot = await getDocs(inventoryQuery);
+        if (!inventorySnapshot.empty) {
+            const doc = inventorySnapshot.docs[0];
+            inventoryDocRef = doc.ref;
+            inventoryData = doc.data() as InventoryItem;
+        }
+    }
+
     await runTransaction(db, async (transaction) => {
         const expenseRef = doc(collection(db, 'expenses'));
         transaction.set(expenseRef, expenseData);
 
         if (expenseData.category === 'material' && expenseData.materialName && expenseData.quantity && expenseData.unitPrice && expenseData.unit) {
-            const inventoryQuery = query(collection(db, 'inventory'), 
-                where('projectId', '==', expenseData.projectId), 
-                where('name', '==', expenseData.materialName)
-            );
-            const inventorySnapshot = await getDocs(inventoryQuery);
-            
-            if (inventorySnapshot.empty) {
+            if (inventoryDocRef && inventoryData) {
+                // Item exists, update it
+                const newQuantity = inventoryData.quantity + expenseData.quantity;
+                const newAveragePrice = ((inventoryData.averagePrice * inventoryData.quantity) + (expenseData.unitPrice * expenseData.quantity)) / newQuantity;
+                
+                transaction.update(inventoryDocRef, {
+                    quantity: newQuantity,
+                    averagePrice: newAveragePrice,
+                });
+            } else {
+                // Item doesn't exist, create it
                 const newInventoryItemRef = doc(collection(db, 'inventory'));
                 transaction.set(newInventoryItemRef, {
                     projectId: expenseData.projectId,
@@ -183,16 +204,6 @@ export function DataProvider({ children }: { children: ReactNode }) {
                     quantity: expenseData.quantity,
                     unit: expenseData.unit,
                     averagePrice: expenseData.unitPrice,
-                });
-            } else {
-                const itemDoc = inventorySnapshot.docs[0];
-                const itemData = itemDoc.data() as InventoryItem;
-                const newQuantity = itemData.quantity + expenseData.quantity;
-                const newAveragePrice = ((itemData.averagePrice * itemData.quantity) + (expenseData.unitPrice * expenseData.quantity)) / newQuantity;
-                
-                transaction.update(itemDoc.ref, {
-                    quantity: newQuantity,
-                    averagePrice: newAveragePrice,
                 });
             }
         }
@@ -207,36 +218,36 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const deleteExpense = async (expenseId: string) => {
     const expenseRef = doc(db, "expenses", expenseId);
     const expenseDoc = await getDoc(expenseRef);
-
+  
     if (!expenseDoc.exists()) {
-        console.error("Expense to delete does not exist!");
-        return;
+      console.error("Expense to delete does not exist!");
+      return;
     }
     const expenseData = expenseDoc.data() as Expense;
-
-    await runTransaction(db, async (transaction) => {
-      if (expenseData.category === 'material' && expenseData.materialName && expenseData.quantity) {
-        const inventoryQuery = query(
-          collection(db, 'inventory'), 
-          where('projectId', '==', expenseData.projectId),
-          where('name', '==', expenseData.materialName)
-        );
-        // Important: getDocs cannot be used inside a transaction.
-        // We must fetch this data outside the transaction.
-        // For this scenario, we will assume a simple update.
-        // A more robust implementation would fetch the doc IDs before the transaction.
-        // To keep it simple and fix the immediate bug, we'll query outside if needed.
-        // However, we'll try to proceed with a direct update, assuming we have the ID.
-        // For this hook, let's refactor to query outside.
-        const inventorySnapshot = await getDocs(inventoryQuery);
-
-        if (!inventorySnapshot.empty) {
-            const itemDoc = inventorySnapshot.docs[0];
-            const currentQuantity = itemDoc.data().quantity || 0;
-            const newQuantity = currentQuantity - expenseData.quantity;
-            transaction.update(itemDoc.ref, { quantity: newQuantity >= 0 ? newQuantity : 0 });
-        }
+  
+    // Fetch inventory item outside of the transaction if needed.
+    let inventoryItemDoc: any = null;
+    if (expenseData.category === 'material' && expenseData.materialName && expenseData.quantity) {
+      const inventoryQuery = query(
+        collection(db, 'inventory'),
+        where('projectId', '==', expenseData.projectId),
+        where('name', '==', expenseData.materialName)
+      );
+      const inventorySnapshot = await getDocs(inventoryQuery);
+      if (!inventorySnapshot.empty) {
+        inventoryItemDoc = inventorySnapshot.docs[0];
       }
+    }
+  
+    await runTransaction(db, async (transaction) => {
+      // Perform the read inside the transaction to get the most up-to-date data
+      if (inventoryItemDoc) {
+        const currentQuantity = inventoryItemDoc.data().quantity || 0;
+        const newQuantity = currentQuantity - (expenseData.quantity ?? 0);
+        transaction.update(inventoryItemDoc.ref, { quantity: newQuantity >= 0 ? newQuantity : 0 });
+      }
+      
+      // Delete the expense document
       transaction.delete(expenseRef);
     });
   };
@@ -293,5 +304,7 @@ export function useData() {
   }
   return context;
 }
+
+    
 
     
