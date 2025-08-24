@@ -72,11 +72,11 @@ export function ExpenseForm({ expense, onFinished, projectId }: ExpenseFormProps
     ? { 
         ...expense,
         date: expense.date.split('T')[0],
-        paymentDate: expense.paymentDate ? expense.paymentDate.split('T')[0] : undefined,
+        paymentDate: expense.paymentDate ? expense.paymentDate.split('T')[0] : '',
       }
     : {
         date: new Date().toISOString().split('T')[0],
-        paymentDate: new Date().toISOString().split('T')[0],
+        paymentDate: '',
         category: 'material',
         status: 'pago',
         projectId,
@@ -120,7 +120,7 @@ export function ExpenseForm({ expense, onFinished, projectId }: ExpenseFormProps
     // Ensure paymentDate is null if status is 'a pagar'
     const finalData = {
         ...formData,
-        paymentDate: formData.status === 'pago' ? formData.paymentDate : undefined,
+        paymentDate: formData.status === 'pago' ? (formData.paymentDate || new Date().toISOString().split('T')[0]) : undefined,
     }
 
     try {
