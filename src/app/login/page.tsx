@@ -118,7 +118,7 @@ export default function LoginPage() {
         </CardContent>
         <CardFooter className="flex flex-col gap-4 p-8 text-center text-sm text-muted-foreground">
             <p>Problemas para acessar? Entre em contato com o suporte. (88) 99938-2994</p>
-            <p className="text-xs">© {new Date().getFullYear()} Messias Vasconcelos. Todos os direitos reservados.</p>
+            <p className="text-xs">© {new Date().getFullYear()} <a href="http://mvdevfullstack.dev.br" title="Messias Vasconcelos" target="_blank" rel="noopener noreferrer">mvdevfullstack</a>. Todos os direitos reservados.</p>
         </CardFooter>
       </Card>
     </div>

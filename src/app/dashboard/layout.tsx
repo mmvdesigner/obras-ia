@@ -89,7 +89,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             </header>
             <main className="flex-1 p-4 sm:p-6">{children}</main>
             <footer className="p-4 text-center text-xs text-muted-foreground">
-                © {new Date().getFullYear()} Messias Vasconcelos. Todos os direitos reservados.
+                © {new Date().getFullYear()} mvdevfullstack. Todos os direitos reservados.
             </footer>
           </div>
         </SidebarInset>
