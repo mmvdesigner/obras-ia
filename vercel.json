@@ -1,4 +1,12 @@
 {
-    "buildCommand": "npm run build",
-    "outputDirectory": ".next"
+  "buildCommand": "npm run build",
+  "outputDirectory": ".next",
+  "env": {
+    "SKIP_ENV_VALIDATION": "1"
+  },
+  "git": {
+    "deploymentEnabled": {
+      "master": true
+    }
   }
+}
