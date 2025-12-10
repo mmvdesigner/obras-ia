@@ -72,9 +72,7 @@ export default function LoginPage() {
             <LiderLogo className="h-12 w-12 text-primary" />
           </div>
           <CardTitle className="text-4xl font-bold tracking-tighter text-primary">Lider Empreendimentos</CardTitle>
-          <CardDescription className="text-lg text-muted-foreground pt-1">
-            Acesse o sistema com suas credenciais.
-          </CardDescription>
+
         </CardHeader>
         <CardContent className="px-8">
           <Form {...form}>
@@ -117,7 +115,7 @@ export default function LoginPage() {
           </Form>
         </CardContent>
         <CardFooter className="flex flex-col gap-4 p-8 text-center text-sm text-muted-foreground">
-            <p>Problemas para acessar? Entre em contato com o suporte. (88) 99938-2994</p>
+            <p>Suporte (88) 99938-2994</p>
             <p className="text-xs">© {new Date().getFullYear()} <a href="http://mvdevfullstack.dev.br" title="Messias Vasconcelos" target="_blank" rel="noopener noreferrer">mvdevfullstack</a>. Todos os direitos reservados.</p>
         </CardFooter>
       </Card>
